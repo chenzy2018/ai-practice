@@ -1,10 +1,13 @@
 package com.czy.qwen.resp;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 /**
  * 全局统一返回封装
  *
  * @author chenzhenyu 2026年05月14日 上午10:53:14
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Result<T> {
     private Integer code;
     private String msg;

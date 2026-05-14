@@ -1,5 +1,10 @@
 server:
-  port: 8080
+  port: 8668
+
+spring:
+  jackson:
+    serialization:
+      indent-output: true   # 这一行开启格式化美化
 
 # 通义千问配置
 dashscope:
