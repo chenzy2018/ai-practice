@@ -47,6 +47,34 @@
 | qwen3-coder-plus | 代码生成、Bug调试、架构设计 | 中等 | Java/Python/Go编码、代码优化、技术排错答疑 |
 | qwen3-vl-plus | 图片识别、截图解析、图文理解 | 中等 | OCR文字提取、截图分析、PDF图文解读 |
 
+
+### input
+#### message
+messages 支持三种角色：
+- system：全局人设、规则、约束（永久生效）
+- user：用户提问
+- assistant：AI 回复
+
+**system**
+
+给AI一个全局人设、规则、约束（永久生效），可以随意设置，也可以不设置，即通用 AI 助手
+- 约束回答风格：简洁、专业、口语、公文
+- 学会强制固定格式输出：适合前后端对接
+
+eg：
+```java
+private static final String SYS_ROLE_JAVA_EXPERT =
+          "你是资深Java后端架构师，回答简洁专业，只讲重点，代码规范易懂，不啰嗦，不用多余客套话。";
+
+private static final String SYS_ROLE_CHAT =
+        "你是亲切友好的聊天助手，语气轻松自然，口语化回答。";
+
+private static final String SYS_ROLE_COPYWRITER =
+        "你是专业文案创作助手，文笔优美，条理清晰，适合写朋友圈、文案、短句。";
+```
+
+只要会话第一条固定放 system，全程人设不变。
+
 ### temperature
 范围：0 ~ 1
 - 0.1：非常严谨、死板、固定答案

@@ -1,6 +1,7 @@
 package com.czy.qwen.server;
 
 import com.czy.qwen.config.QwenConfig;
+import com.czy.qwen.dto.ChatRequest;
 import com.czy.qwen.dto.Message;
 import com.czy.qwen.dto.QwenRequest;
 import com.czy.qwen.resp.Result;
@@ -12,6 +13,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Qwen AI 服务实现类
  * 支持基于sessionId的会话隔离
+ * 支持可选System Prompt系统角色
  *
  * @author chenzhenyu 2026年05月14日
  */
@@ -84,19 +87,20 @@ public class QwenAiServiceImpl implements IQwenAiService {
     }
 
     @Override
-    public Result<ChatResponse> chatWithContext(String sessionId, String question, String model, Double temperature) {
+    public Result<ChatResponse> chatWithContext(ChatRequest request) {
         long startTime = System.currentTimeMillis();
-        String effectiveSessionId = sessionId != null && !sessionId.trim().isEmpty() ? sessionId.trim() : generateSessionId();
-        String effectiveModel = getEffectiveModel(model);
-        Double effectiveTemperature = getEffectiveTemperature(temperature);
+        String effectiveSessionId = getEffectiveSessionId(request.getSessionId());
+        String effectiveModel = getEffectiveModel(request.getModel());
+        Double effectiveTemperature = getEffectiveTemperature(request.getTemperature());
+        String effectivePrompt = request.getSystemPrompt();
 
-        List<Message> messageHistory = getOrCreateSessionHistory(effectiveSessionId);
+        List<Message> messageHistory = getOrCreateSessionHistory(effectiveSessionId, effectivePrompt);
 
-        log.info("多轮对话请求 - sessionId: {}, question: {}, model: {}, temperature: {}, 历史消息数: {}",
-                effectiveSessionId, truncate(question), effectiveModel, effectiveTemperature, messageHistory.size());
+        log.info("多轮对话请求 - sessionId: {}, question: {}, systemPrompt: {}, model: {}, temperature: {}, 历史消息数: {}",
+                effectiveSessionId, truncate(request.getQuestion()), effectivePrompt, effectiveModel, effectiveTemperature, messageHistory.size());
 
         try {
-            String escapedQuestion = escapeJson(question);
+            String escapedQuestion = escapeJson(request.getQuestion());
             messageHistory.add(Message.user(escapedQuestion));
 
             String response = sendRequest(new ArrayList<>(messageHistory), effectiveModel, effectiveTemperature);
@@ -110,11 +114,11 @@ public class QwenAiServiceImpl implements IQwenAiService {
             return Result.success(new ChatResponse(effectiveSessionId, answer));
         } catch (java.net.SocketTimeoutException e) {
             log.error("多轮对话请求超时 - sessionId: {}, question: {}, model: {}, error: {}",
-                    effectiveSessionId, truncate(question), effectiveModel, e.getMessage());
+                    effectiveSessionId, truncate(request.getQuestion()), effectiveModel, e.getMessage());
             return Result.fail("请求超时，请稍后重试");
         } catch (Exception e) {
             log.error("多轮对话异常 - sessionId: {}, question: {}, model: {}, error: {}",
-                    effectiveSessionId, truncate(question), effectiveModel, e.getMessage(), e);
+                    effectiveSessionId, truncate(request.getQuestion()), effectiveModel, e.getMessage(), e);
             return Result.fail("异常: " + e.getMessage());
         }
     }
@@ -125,11 +129,8 @@ public class QwenAiServiceImpl implements IQwenAiService {
             return Result.fail("sessionId不能为空");
         }
 
-        List<Message> messageHistory = sessionHistoryMap.get(sessionId);
+        List<Message> messageHistory = sessionHistoryMap.remove(sessionId);
         int historySize = messageHistory != null ? messageHistory.size() : 0;
-        if (messageHistory != null) {
-            messageHistory.clear();
-        }
 
         log.info("清空会话上下文 - sessionId: {}, 已清除 {} 条历史消息", sessionId, historySize);
         return Result.success("会话 " + sessionId + " 的上下文已清空，共清除 " + historySize + " 条消息");
@@ -158,8 +159,21 @@ public class QwenAiServiceImpl implements IQwenAiService {
         }
     }
 
-    private List<Message> getOrCreateSessionHistory(String sessionId) {
-        return sessionHistoryMap.computeIfAbsent(sessionId, k -> Collections.synchronizedList(new ArrayList<>()));
+    private String getEffectiveSessionId(String sessionId) {
+        return sessionId != null && !sessionId.trim().isEmpty() ? sessionId : generateSessionId();
+    }
+
+    private List<Message> getOrCreateSessionHistory(String sessionId, String systemPrompt) {
+        return sessionHistoryMap.computeIfAbsent(sessionId, k -> {
+            List<Message> newHistory = Collections.synchronizedList(new ArrayList<>());
+            if (StringUtils.isNotBlank(systemPrompt)) {
+                log.info("创建新会话(带SystemPrompt) - sessionId: {}, systemPrompt: {}", sessionId, truncate(systemPrompt, 50));
+                newHistory.add(Message.system(systemPrompt));
+            } else {
+                log.info("创建新会话(无SystemPrompt) - sessionId: {}", sessionId);
+            }
+            return newHistory;
+        });
     }
 
     private String getEffectiveModel(String model) {
@@ -212,10 +226,10 @@ public class QwenAiServiceImpl implements IQwenAiService {
         if (s == null) {
             return "";
         }
-        return s.replace("\"", "\\\"")
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
                 .replace("\n", " ")
-                .replace("\r", " ")
-                .replace("\\", "\\\\");
+                .replace("\r", " ");
     }
 
     private String parseAnswer(String response) throws IOException {

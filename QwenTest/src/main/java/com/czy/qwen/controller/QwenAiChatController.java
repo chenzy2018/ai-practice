@@ -1,20 +1,18 @@
 package com.czy.qwen.controller;
 
+import com.czy.qwen.dto.ChatRequest;
 import com.czy.qwen.resp.Result;
 import com.czy.qwen.server.IQwenAiService;
 import com.czy.qwen.server.IQwenAiService.ChatResponse;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Set;
 import javax.annotation.Resource;
+import java.util.Set;
 
 /**
  * Qwen AI 聊天控制器 - Facade 接口
  * 支持基于sessionId的会话隔离
+ * 支持可选System Prompt系统角色
  *
  * @author chenzhenyu 2026年05月14日
  */
@@ -31,12 +29,9 @@ public class QwenAiChatController {
         return qwenAiService.chat(question, model, temperature);
     }
 
-    @GetMapping("/ai/chatWithContext")
-    public Result<ChatResponse> chatWithContext(@RequestParam String question,
-                                                @RequestParam(required = false) String sessionId,
-                                                @RequestParam(required = false) String model,
-                                                @RequestParam(required = false) Double temperature) {
-        return qwenAiService.chatWithContext(sessionId, question, model, temperature);
+    @PostMapping("/ai/chatWithContext")
+    public Result<ChatResponse> chatWithContext(@RequestBody ChatRequest request) {
+        return qwenAiService.chatWithContext(request);
     }
 
     @GetMapping("/ai/clear")

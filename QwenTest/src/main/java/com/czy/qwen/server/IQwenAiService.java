@@ -1,5 +1,6 @@
 package com.czy.qwen.server;
 
+import com.czy.qwen.dto.ChatRequest;
 import com.czy.qwen.resp.Result;
 
 import java.util.Set;
@@ -22,7 +23,7 @@ public interface IQwenAiService {
     String generateSessionId();
 
     /**
-     * 单轮对话（自定义参数）
+     * 单轮对话
      *
      * @param question    用户问题
      * @param model       模型名称，默认 "qwen-turbo"
@@ -32,15 +33,17 @@ public interface IQwenAiService {
     Result<String> chat(String question, String model, Double temperature);
 
     /**
-     * 多轮对话（带上下文，自定义参数）
+     * 多轮对话（带上下文）
      *
-     * @param sessionId   会话ID，为空则生成新会话
-     * @param question    用户问题
-     * @param model       模型名称，默认 "qwen-turbo"
-     * @param temperature 温度，控制随机性/创意，范围 0~1，默认 0.7
+     * @param request 聊天请求参数，包含 sessionId, question, systemPrompt, model, temperature
+     *                - sessionId: 会话ID，为空则生成新会话
+     *                - question: 用户问题
+     *                - systemPrompt: 系统角色Prompt，可选，不传则不带system消息
+     *                - model: 模型名称，默认 "qwen-turbo"
+     *                - temperature: 温度，默认 0.7
      * @return 回答结果（包含sessionId）
      */
-    Result<ChatResponse> chatWithContext(String sessionId, String question, String model, Double temperature);
+    Result<ChatResponse> chatWithContext(ChatRequest request);
 
     /**
      * 清空指定会话的上下文

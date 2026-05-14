@@ -7,6 +7,10 @@ package com.czy.qwen.dto;
  */
 public class Message {
 
+    public static final String ROLE_USER = "user";
+    public static final String ROLE_ASSISTANT = "assistant";
+    public static final String ROLE_SYSTEM = "system";
+
     private String role;
     private String content;
 
@@ -19,11 +23,15 @@ public class Message {
     }
 
     public static Message user(String content) {
-        return new Message("user", content);
+        return new Message(ROLE_USER, content);
     }
 
     public static Message assistant(String content) {
-        return new Message("assistant", content);
+        return new Message(ROLE_ASSISTANT, content);
+    }
+
+    public static Message system(String content) {
+        return new Message(ROLE_SYSTEM, content);
     }
 
     public String getRole() {
