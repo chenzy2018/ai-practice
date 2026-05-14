@@ -1,0 +1,6 @@
+server:
+  port: 8080
+
+# 通义千问配置
+dashscope:
+  api-key: sk-33b96ae17cba4c928a8bf7bcab5b5b08
