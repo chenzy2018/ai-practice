@@ -59,7 +59,7 @@ messages 支持三种角色：
 
 给AI一个全局人设、规则、约束（永久生效），可以随意设置，也可以不设置，即通用 AI 助手
 - 约束回答风格：简洁、专业、口语、公文
-- 学会强制固定格式输出：适合前后端对接
+- 学会强制固定格式输出：适合前后端对接，比如要求按照一定的json格式，封装返回结果
 
 eg：
 ```java
@@ -71,6 +71,14 @@ private static final String SYS_ROLE_CHAT =
 
 private static final String SYS_ROLE_COPYWRITER =
         "你是专业文案创作助手，文笔优美，条理清晰，适合写朋友圈、文案、短句。";
+
+// 约定返回格式
+private static final String SYS_JSON_MODE =
+        "返回结果严格遵守规则：\n" +
+                "1.只返回标准JSON，不要任何多余解释、前言、后语\n" +
+                "2.不要用```代码块包裹，不换行，只输出单行JSON\n" +
+                "3.固定返回结构：{\"code\":200,\"msg\":\"success\",\"answer\":\"回答内容\"}\n" +
+                "4.把问题答案填入answer字段即可";
 ```
 
 只要会话第一条固定放 system，全程人设不变。
