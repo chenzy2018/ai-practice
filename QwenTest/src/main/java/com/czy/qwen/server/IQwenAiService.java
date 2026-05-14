@@ -1,13 +1,12 @@
 package com.czy.qwen.server;
 
-import com.czy.qwen.dto.ChatRequest;
+import com.czy.qwen.req.ChatRequest;
+import com.czy.qwen.resp.ChatResponse;
 import com.czy.qwen.resp.Result;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import com.czy.qwen.resp.SessionInfo;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Qwen AI 服务接口
@@ -27,19 +26,9 @@ public interface IQwenAiService {
 
     Result<String> clearContext(String sessionId);
 
-    Result<Set<String>> listSessions();
+    Result<List<SessionInfo>> listSessions();
 
     Result<String> removeSession(String sessionId);
 
     Result<Map<String, Object>> getSessionInfo(String sessionId);
-
-    @Getter
-    @Setter
-    @Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
-    class ChatResponse {
-        private String sessionId;
-        private String answer;
-    }
 }

@@ -1,4 +1,4 @@
-package com.czy.qwen.dto;
+package com.czy.qwen.facade;
 
 import lombok.Getter;
 

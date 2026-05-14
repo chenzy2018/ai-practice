@@ -1,6 +1,6 @@
 package com.czy.qwen.server;
 
-import com.czy.qwen.dto.Message;
+import com.czy.qwen.facade.Message;
 import lombok.Builder;
 import lombok.Getter;
 

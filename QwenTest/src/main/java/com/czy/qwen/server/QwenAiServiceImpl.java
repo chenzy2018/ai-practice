@@ -1,10 +1,12 @@
 package com.czy.qwen.server;
 
 import com.czy.qwen.config.QwenConfig;
-import com.czy.qwen.dto.ChatRequest;
-import com.czy.qwen.dto.Message;
-import com.czy.qwen.dto.QwenRequest;
+import com.czy.qwen.facade.Message;
+import com.czy.qwen.facade.QwenRequest;
+import com.czy.qwen.req.ChatRequest;
+import com.czy.qwen.resp.ChatResponse;
 import com.czy.qwen.resp.Result;
+import com.czy.qwen.resp.SessionInfo;
 import com.czy.qwen.util.AiStringUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -16,8 +18,12 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Qwen AI 服务
@@ -30,6 +36,8 @@ public class QwenAiServiceImpl implements IQwenAiService {
 
     private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
     private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
+    private static final ZoneId HK_TIME_ZONE = ZoneId.of("Asia/Hong_Kong");
+    private static final DateTimeFormatter HK_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
 
     @Resource
     private QwenConfig qwenConfig;
@@ -114,8 +122,22 @@ public class QwenAiServiceImpl implements IQwenAiService {
     }
 
     @Override
-    public Result<Set<String>> listSessions() {
-        return Result.success(sessionManager.getAllSessionIds());
+    public Result<List<SessionInfo>> listSessions() {
+        List<SessionInfo> sessionInfos = sessionManager.getAllSessions().entrySet().stream()
+                .map(entry -> {
+                    SessionContext context = entry.getValue();
+                    return SessionInfo.builder()
+                            .sessionId(context.getSessionId())
+                            .messageCount(context.getMessageCount())
+                            .lastActiveTime(formatTimeToHongKong(context.getLastActiveTime()))
+                            .hasSystemPrompt(AiStringUtils.isNotBlank(context.getSystemPrompt()))
+                            .build();
+                })
+                .sorted((a, b) -> b.getLastActiveTime().compareTo(a.getLastActiveTime()))
+                .collect(Collectors.toList());
+
+        log.info("查询会话列表 - 活跃会话数: {}", sessionInfos.size());
+        return Result.success(sessionInfos);
     }
 
     @Override
@@ -146,7 +168,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
         Map<String, Object> info = new HashMap<>();
         info.put("sessionId", context.getSessionId());
         info.put("messageCount", context.getMessageCount());
-        info.put("lastActiveTime", new Date(context.getLastActiveTime()));
+        info.put("lastActiveTime", formatTimeToHongKong(context.getLastActiveTime()));
         info.put("hasSystemPrompt", AiStringUtils.isNotBlank(context.getSystemPrompt()));
 
         return Result.success(info);
@@ -186,6 +208,12 @@ public class QwenAiServiceImpl implements IQwenAiService {
             log.debug("AI响应体 - {}", AiStringUtils.truncate(responseBody, 2000));
             return responseBody;
         }
+    }
+
+    private String formatTimeToHongKong(long timestamp) {
+        return Instant.ofEpochMilli(timestamp)
+                .atZone(HK_TIME_ZONE)
+                .format(HK_FORMATTER);
     }
 
     private String getEffectiveSessionId(String sessionId) {

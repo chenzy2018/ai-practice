@@ -1,4 +1,4 @@
-package com.czy.qwen.dto;
+package com.czy.qwen.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * 聊天请求参数
+ * 会话信息
  *
  * @author chenzhenyu 2026年05月14日
  */
@@ -16,11 +16,9 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatRequest {
-
+public class SessionInfo {
     private String sessionId;
-    private String question;
-    private String systemPrompt;
-    private String model;
-    private Double temperature;
+    private Integer messageCount;
+    private String lastActiveTime;
+    private Boolean hasSystemPrompt;
 }

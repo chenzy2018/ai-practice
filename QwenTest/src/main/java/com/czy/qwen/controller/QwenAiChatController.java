@@ -1,14 +1,15 @@
 package com.czy.qwen.controller;
 
-import com.czy.qwen.dto.ChatRequest;
+import com.czy.qwen.req.ChatRequest;
+import com.czy.qwen.resp.ChatResponse;
 import com.czy.qwen.resp.Result;
+import com.czy.qwen.resp.SessionInfo;
 import com.czy.qwen.server.IQwenAiService;
-import com.czy.qwen.server.IQwenAiService.ChatResponse;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Qwen AI 聊天控制器
@@ -28,8 +29,8 @@ public class QwenAiChatController {
         return qwenAiService.chat(question, model, temperature);
     }
 
-    @GetMapping("/ai/chatWithContext")
-    public Result<ChatResponse> chatWithContext(ChatRequest request) {
+    @PostMapping("/ai/chatWithContext")
+    public Result<ChatResponse> chatWithContext(@RequestBody ChatRequest request) {
         return qwenAiService.chatWithContext(request);
     }
 
@@ -44,7 +45,7 @@ public class QwenAiChatController {
     }
 
     @GetMapping("/ai/session/list")
-    public Result<Set<String>> listSessions() {
+    public Result<List<SessionInfo>> listSessions() {
         return qwenAiService.listSessions();
     }
 
