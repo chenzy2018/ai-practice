@@ -13,14 +13,6 @@ public interface IQwenAiService {
     Double DEFAULT_TEMPERATURE = 0.7;
 
     /**
-     * 单轮对话（使用默认参数）
-     *
-     * @param question 用户问题
-     * @return 回答结果
-     */
-    Result<String> chat(String question);
-
-    /**
      * 单轮对话（自定义参数）
      *
      * @param question    用户问题
@@ -29,14 +21,6 @@ public interface IQwenAiService {
      * @return 回答结果
      */
     Result<String> chat(String question, String model, Double temperature);
-
-    /**
-     * 多轮对话（带上下文，使用默认参数）
-     *
-     * @param question 用户问题
-     * @return 回答结果
-     */
-    Result<String> chatWithContext(String question);
 
     /**
      * 多轮对话（带上下文，自定义参数）

@@ -4,8 +4,13 @@ server:
 spring:
   jackson:
     serialization:
-      indent-output: true   # 这一行开启格式化美化
+      indent-output: true
 
-# 通义千问配置
+logging:
+  level:
+    root: INFO
+    com.czy.qwen: DEBUG
+    com.czy.qwen.server.QwenAiServiceImpl: INFO
+
 dashscope:
   api-key: sk-33b96ae17cba4c928a8bf7bcab5b5b08
