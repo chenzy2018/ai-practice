@@ -40,37 +40,4 @@ public class QwenAiChatController {
     public Result<String> clear() {
         return qwenAiService.clearContext();
     }
-
-    @PostMapping("/api/ai/chat")
-    public Result<String> chatPost(@RequestBody Map<String, Object> request) {
-        String question = (String) request.get("question");
-        String model = (String) request.get("model");
-        Double temperature = request.get("temperature") != null 
-                ? ((Number) request.get("temperature")).doubleValue() 
-                : null;
-        
-        if (question == null || question.trim().isEmpty()) {
-            return Result.fail("问题不能为空");
-        }
-        return qwenAiService.chat(question, model, temperature);
-    }
-
-    @PostMapping("/api/ai/chatWithContext")
-    public Result<String> chatWithContextPost(@RequestBody Map<String, Object> request) {
-        String question = (String) request.get("question");
-        String model = (String) request.get("model");
-        Double temperature = request.get("temperature") != null 
-                ? ((Number) request.get("temperature")).doubleValue() 
-                : null;
-        
-        if (question == null || question.trim().isEmpty()) {
-            return Result.fail("问题不能为空");
-        }
-        return qwenAiService.chatWithContext(question, model, temperature);
-    }
-
-    @PostMapping("/api/ai/clear")
-    public Result<String> clearPost() {
-        return qwenAiService.clearContext();
-    }
 }
