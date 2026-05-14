@@ -17,13 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Qwen AI 服务实现类
+ * 支持基于sessionId的会话隔离
  *
  * @author chenzhenyu 2026年05月14日
  */
@@ -39,13 +39,18 @@ public class QwenAiServiceImpl implements IQwenAiService {
 
     private final OkHttpClient client;
     private final ObjectMapper objectMapper;
-    private final List<Message> messageHistory;
+    private final ConcurrentHashMap<String, List<Message>> sessionHistoryMap;
 
     public QwenAiServiceImpl() {
         this.client = createOkHttpClient();
         this.objectMapper = new ObjectMapper();
-        this.messageHistory = Collections.synchronizedList(new ArrayList<>());
+        this.sessionHistoryMap = new ConcurrentHashMap<>();
         log.info("QwenAiServiceImpl 初始化完成，默认模型: {}, 默认温度: {}", DEFAULT_MODEL, DEFAULT_TEMPERATURE);
+    }
+
+    @Override
+    public String generateSessionId() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
     @Override
@@ -53,70 +58,108 @@ public class QwenAiServiceImpl implements IQwenAiService {
         long startTime = System.currentTimeMillis();
         String effectiveModel = getEffectiveModel(model);
         Double effectiveTemperature = getEffectiveTemperature(temperature);
-        
-        log.info("单轮对话请求 - question: {}, model: {}, temperature: {}", 
+
+        log.info("单轮对话请求 - question: {}, model: {}, temperature: {}",
                 truncate(question), effectiveModel, effectiveTemperature);
-        
+
         try {
             String escapedQuestion = escapeJson(question);
             List<Message> messages = Collections.singletonList(Message.user(escapedQuestion));
             String response = sendRequest(messages, effectiveModel, effectiveTemperature);
             String answer = parseAnswer(response);
-            
+
             long duration = System.currentTimeMillis() - startTime;
             log.info("单轮对话响应 - answer: {}, 耗时: {}ms", truncate(answer), duration);
-            
+
             return Result.success(answer);
         } catch (java.net.SocketTimeoutException e) {
-            log.error("单轮对话请求超时 - question: {}, model: {}, error: {}", 
+            log.error("单轮对话请求超时 - question: {}, model: {}, error: {}",
                     truncate(question), effectiveModel, e.getMessage());
             return Result.fail("请求超时，请稍后重试");
         } catch (Exception e) {
-            log.error("单轮对话异常 - question: {}, model: {}, error: {}", 
+            log.error("单轮对话异常 - question: {}, model: {}, error: {}",
                     truncate(question), effectiveModel, e.getMessage(), e);
             return Result.fail("异常: " + e.getMessage());
         }
     }
 
     @Override
-    public Result<String> chatWithContext(String question, String model, Double temperature) {
+    public Result<ChatResponse> chatWithContext(String sessionId, String question, String model, Double temperature) {
         long startTime = System.currentTimeMillis();
+        String effectiveSessionId = sessionId != null && !sessionId.trim().isEmpty() ? sessionId.trim() : generateSessionId();
         String effectiveModel = getEffectiveModel(model);
         Double effectiveTemperature = getEffectiveTemperature(temperature);
-        
-        log.info("多轮对话请求 - question: {}, model: {}, temperature: {}, 历史消息数: {}",
-                truncate(question), effectiveModel, effectiveTemperature, messageHistory.size());
-        
+
+        List<Message> messageHistory = getOrCreateSessionHistory(effectiveSessionId);
+
+        log.info("多轮对话请求 - sessionId: {}, question: {}, model: {}, temperature: {}, 历史消息数: {}",
+                effectiveSessionId, truncate(question), effectiveModel, effectiveTemperature, messageHistory.size());
+
         try {
             String escapedQuestion = escapeJson(question);
             messageHistory.add(Message.user(escapedQuestion));
-            
+
             String response = sendRequest(new ArrayList<>(messageHistory), effectiveModel, effectiveTemperature);
             String answer = parseAnswer(response);
             messageHistory.add(Message.assistant(answer));
-            
+
             long duration = System.currentTimeMillis() - startTime;
-            log.info("多轮对话响应 - answer: {}, 耗时: {}ms, 历史消息数: {}", 
-                    truncate(answer), duration, messageHistory.size());
-            
-            return Result.success(answer);
+            log.info("多轮对话响应 - sessionId: {}, answer: {}, 耗时: {}ms, 历史消息数: {}",
+                    effectiveSessionId, truncate(answer), duration, messageHistory.size());
+
+            return Result.success(new ChatResponse(effectiveSessionId, answer));
         } catch (java.net.SocketTimeoutException e) {
-            log.error("多轮对话请求超时 - question: {}, model: {}, 历史消息数: {}, error: {}", 
-                    truncate(question), effectiveModel, messageHistory.size(), e.getMessage());
+            log.error("多轮对话请求超时 - sessionId: {}, question: {}, model: {}, error: {}",
+                    effectiveSessionId, truncate(question), effectiveModel, e.getMessage());
             return Result.fail("请求超时，请稍后重试");
         } catch (Exception e) {
-            log.error("多轮对话异常 - question: {}, model: {}, 历史消息数: {}, error: {}", 
-                    truncate(question), effectiveModel, messageHistory.size(), e.getMessage(), e);
+            log.error("多轮对话异常 - sessionId: {}, question: {}, model: {}, error: {}",
+                    effectiveSessionId, truncate(question), effectiveModel, e.getMessage(), e);
             return Result.fail("异常: " + e.getMessage());
         }
     }
 
     @Override
-    public Result<String> clearContext() {
-        int historySize = messageHistory.size();
-        messageHistory.clear();
-        log.info("清空上下文 - 已清除 {} 条历史消息", historySize);
-        return Result.success("上下文已清空");
+    public Result<String> clearContext(String sessionId) {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            return Result.fail("sessionId不能为空");
+        }
+
+        List<Message> messageHistory = sessionHistoryMap.get(sessionId);
+        int historySize = messageHistory != null ? messageHistory.size() : 0;
+        if (messageHistory != null) {
+            messageHistory.clear();
+        }
+
+        log.info("清空会话上下文 - sessionId: {}, 已清除 {} 条历史消息", sessionId, historySize);
+        return Result.success("会话 " + sessionId + " 的上下文已清空，共清除 " + historySize + " 条消息");
+    }
+
+    @Override
+    public Result<Set<String>> listSessions() {
+        Set<String> sessionIds = sessionHistoryMap.keySet();
+        log.info("查询会话列表 - 活跃会话数: {}", sessionIds.size());
+        return Result.success(sessionIds);
+    }
+
+    @Override
+    public Result<String> removeSession(String sessionId) {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            return Result.fail("sessionId不能为空");
+        }
+
+        List<Message> removed = sessionHistoryMap.remove(sessionId);
+        if (removed != null) {
+            log.info("删除会话 - sessionId: {}, 已删除 {} 条历史消息", sessionId, removed.size());
+            return Result.success("会话 " + sessionId + " 已删除");
+        } else {
+            log.warn("删除会话失败 - sessionId: {} 不存在", sessionId);
+            return Result.fail("会话 " + sessionId + " 不存在");
+        }
+    }
+
+    private List<Message> getOrCreateSessionHistory(String sessionId) {
+        return sessionHistoryMap.computeIfAbsent(sessionId, k -> Collections.synchronizedList(new ArrayList<>()));
     }
 
     private String getEffectiveModel(String model) {
@@ -141,7 +184,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
     private String sendRequest(List<Message> messages, String model, Double temperature) throws JsonProcessingException {
         QwenRequest requestBody = new QwenRequest(model, messages, temperature);
         String json = objectMapper.writeValueAsString(requestBody);
-        
+
         log.debug("AI请求体 - {}", truncate(json, 1000));
 
         Request request = new Request.Builder()
@@ -179,7 +222,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
         JsonNode rootNode = objectMapper.readTree(response);
         JsonNode outputNode = rootNode.path("output");
         JsonNode textNode = outputNode.path("text");
-        
+
         if (textNode.isTextual()) {
             return textNode.asText();
         }
@@ -187,7 +230,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
     }
 
     private String truncate(String str) {
-        return truncate(str, 2000);
+        return truncate(str, 200);
     }
 
     private String truncate(String str, int maxLength) {
