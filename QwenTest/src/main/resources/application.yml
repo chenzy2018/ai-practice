@@ -14,3 +14,8 @@ logging:
 
 dashscope:
   api-key: sk-33b96ae17cba4c928a8bf7bcab5b5b08
+
+ai:
+  session:
+    timeout-seconds: 10 # 单位：s
+    cleanup-interval-ms: 60000 # 单位：ms

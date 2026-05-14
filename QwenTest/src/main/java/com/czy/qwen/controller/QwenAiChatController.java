@@ -7,12 +7,11 @@ import com.czy.qwen.server.IQwenAiService.ChatResponse;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * Qwen AI 聊天控制器 - Facade 接口
- * 支持基于sessionId的会话隔离
- * 支持可选System Prompt系统角色
+ * Qwen AI 聊天控制器
  *
  * @author chenzhenyu 2026年05月14日
  */
@@ -29,8 +28,8 @@ public class QwenAiChatController {
         return qwenAiService.chat(question, model, temperature);
     }
 
-    @PostMapping("/ai/chatWithContext")
-    public Result<ChatResponse> chatWithContext(@RequestBody ChatRequest request) {
+    @GetMapping("/ai/chatWithContext")
+    public Result<ChatResponse> chatWithContext(ChatRequest request) {
         return qwenAiService.chatWithContext(request);
     }
 
@@ -41,13 +40,17 @@ public class QwenAiChatController {
 
     @GetMapping("/ai/session/new")
     public Result<String> createSession() {
-        String sessionId = qwenAiService.generateSessionId();
-        return Result.success(sessionId);
+        return Result.success(qwenAiService.generateSessionId());
     }
 
     @GetMapping("/ai/session/list")
     public Result<Set<String>> listSessions() {
         return qwenAiService.listSessions();
+    }
+
+    @GetMapping("/ai/session/info")
+    public Result<Map<String, Object>> getSessionInfo(@RequestParam String sessionId) {
+        return qwenAiService.getSessionInfo(sessionId);
     }
 
     @DeleteMapping("/ai/session/{sessionId}")

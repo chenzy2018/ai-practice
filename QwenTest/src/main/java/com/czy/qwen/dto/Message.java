@@ -1,23 +1,23 @@
 package com.czy.qwen.dto;
 
+import lombok.Getter;
+
 /**
  * 消息 DTO
  *
  * @author chenzhenyu 2026年05月14日
  */
+@Getter
 public class Message {
 
     public static final String ROLE_USER = "user";
     public static final String ROLE_ASSISTANT = "assistant";
     public static final String ROLE_SYSTEM = "system";
 
-    private String role;
-    private String content;
+    private final String role;
+    private final String content;
 
-    public Message() {
-    }
-
-    public Message(String role, String content) {
+    private Message(String role, String content) {
         this.role = role;
         this.content = content;
     }
@@ -32,21 +32,5 @@ public class Message {
 
     public static Message system(String content) {
         return new Message(ROLE_SYSTEM, content);
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
     }
 }
