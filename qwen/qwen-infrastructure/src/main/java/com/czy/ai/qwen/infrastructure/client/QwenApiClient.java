@@ -1,8 +1,8 @@
 package com.czy.ai.qwen.infrastructure.client;
 
+import com.czy.ai.qwen.common.config.QwenConfig;
 import com.czy.ai.qwen.common.util.AiStringUtils;
 import com.czy.ai.qwen.domain.Message;
-import com.czy.ai.qwen.infrastructure.config.QwenConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
@@ -22,8 +22,6 @@ import javax.annotation.Resource;
 @Service
 public class QwenApiClient {
 
-    private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
-
     @Resource
     private QwenConfig qwenConfig;
 
@@ -34,7 +32,7 @@ public class QwenApiClient {
         String jsonBody = buildRequestJson(messages, model, temperature);
         log.debug("AI请求体 - {}", AiStringUtils.truncate(jsonBody, 1000));
 
-        String response = okHttpService.post(API_URL, jsonBody, qwenConfig.getApiKey());
+        String response = okHttpService.post(qwenConfig.getApiUrl(), jsonBody, qwenConfig.getApiKey());
         log.debug("AI响应体 - {}", AiStringUtils.truncate(response, 2000));
 
         return response;
@@ -44,7 +42,7 @@ public class QwenApiClient {
         String jsonBody = buildStreamRequestJson(messages, model, temperature);
         log.debug("流式请求体 - {}", AiStringUtils.truncate(jsonBody, 1000));
 
-        return okHttpService.postStream(API_URL, jsonBody, qwenConfig.getApiKey());
+        return okHttpService.postStream(qwenConfig.getApiUrl(), jsonBody, qwenConfig.getApiKey());
     }
 
     private String buildRequestJson(List<Message> messages, String model, Double temperature) throws JsonProcessingException {

@@ -1,5 +1,6 @@
 package com.czy.ai.qwen.infrastructure.client;
 
+import com.czy.ai.qwen.common.config.QwenConfig;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -8,6 +9,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -23,28 +25,42 @@ public class OkHttpService {
 
     public static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
 
-    private final OkHttpClient client;
-    private final OkHttpClient streamClient;
+    @Resource
+    private QwenConfig qwenConfig;
 
-    public OkHttpService() {
-        this.client = createOkHttpClient();
-        this.streamClient = createStreamOkHttpClient();
+    private volatile OkHttpClient client;
+    private volatile OkHttpClient streamClient;
+
+    private OkHttpClient getClient() {
+        if (client == null) {
+            synchronized (this) {
+                if (client == null) {
+                    QwenConfig.OkHttpConfig httpConfig = qwenConfig.getHttp();
+                    client = new OkHttpClient.Builder()
+                            .connectTimeout(httpConfig.getConnectTimeout(), TimeUnit.SECONDS)
+                            .readTimeout(httpConfig.getReadTimeout(), TimeUnit.SECONDS)
+                            .writeTimeout(httpConfig.getWriteTimeout(), TimeUnit.SECONDS)
+                            .build();
+                }
+            }
+        }
+        return client;
     }
 
-    private OkHttpClient createOkHttpClient() {
-        return new OkHttpClient.Builder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .build();
-    }
-
-    private OkHttpClient createStreamOkHttpClient() {
-        return new OkHttpClient.Builder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(5, TimeUnit.MINUTES)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .build();
+    private OkHttpClient getStreamClient() {
+        if (streamClient == null) {
+            synchronized (this) {
+                if (streamClient == null) {
+                    QwenConfig.OkHttpConfig httpConfig = qwenConfig.getHttp();
+                    streamClient = new OkHttpClient.Builder()
+                            .connectTimeout(httpConfig.getConnectTimeout(), TimeUnit.SECONDS)
+                            .readTimeout(httpConfig.getStreamReadTimeout(), TimeUnit.SECONDS)
+                            .writeTimeout(httpConfig.getWriteTimeout(), TimeUnit.SECONDS)
+                            .build();
+                }
+            }
+        }
+        return streamClient;
     }
 
     public String post(String url, String jsonBody, String authToken) throws IOException {
@@ -54,7 +70,7 @@ public class OkHttpService {
                 .addHeader("Authorization", "Bearer " + authToken)
                 .build();
 
-        try (Response response = client.newCall(request).execute()) {
+        try (Response response = getClient().newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String errorBody = response.body() != null ? response.body().string() : "";
                 log.error("HTTP请求失败 - status: {}, errorBody: {}", response.code(), errorBody);
@@ -72,7 +88,7 @@ public class OkHttpService {
                 .addHeader("Accept", "text/event-stream")
                 .build();
 
-        Response response = streamClient.newCall(request).execute();
+        Response response = getStreamClient().newCall(request).execute();
 
         if (!response.isSuccessful()) {
             String errorBody = response.body() != null ? response.body().string() : "";
@@ -85,9 +101,5 @@ public class OkHttpService {
                 response.code(), response.header("Content-Type"));
 
         return response;
-    }
-
-    public OkHttpClient getClient() {
-        return client;
     }
 }

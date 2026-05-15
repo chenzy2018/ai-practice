@@ -7,13 +7,17 @@ spring:
 
 ai:
   qwen:
-    api-key: sk-33b96ae17cba4c928a8bf7bcab5b5b08
+    api-key: ${QWEN_API_KEY:sk-33b96ae17cba4c928a8bf7bcab5b5b08}
     api-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
-    connect-timeout: 30
-    read-timeout: 60
-  session:
-    timeout-seconds: 1800
-    cleanup-interval-ms: 60000
+    http:
+      connect-timeout: 30
+      read-timeout: 60
+      write-timeout: 60
+      stream-read-timeout: 300
+    session:
+      timeout-seconds: 1800
+      cleanup-interval-ms: 60000
+      max-sessions-per-minute: 10
 
 logging:
   level:

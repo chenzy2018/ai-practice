@@ -1,9 +1,11 @@
 package com.czy.ai.qwen.service;
 
 import com.google.common.util.concurrent.RateLimiter;
+import com.czy.ai.qwen.common.config.QwenConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,9 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class RateLimitService {
 
-    private static final int MAX_SESSIONS_PER_MINUTE = 10;
-
     private final Map<String, RateLimiter> userRateLimiters = new ConcurrentHashMap<>();
+
+    @Resource
+    private QwenConfig qwenConfig;
 
     /**
      * 检查用户是否允许创建新会话
@@ -33,8 +36,9 @@ public class RateLimitService {
             return true;
         }
 
+        int maxSessionsPerMinute = qwenConfig.getSession().getMaxSessionsPerMinute();
         RateLimiter limiter = userRateLimiters.computeIfAbsent(userId,
-                k -> RateLimiter.create(MAX_SESSIONS_PER_MINUTE / 60.0));
+                k -> RateLimiter.create(maxSessionsPerMinute / 60.0));
 
         boolean acquired = limiter.tryAcquire();
         if (!acquired) {

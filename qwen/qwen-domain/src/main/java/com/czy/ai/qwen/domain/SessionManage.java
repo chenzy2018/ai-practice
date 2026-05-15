@@ -1,15 +1,16 @@
 package com.czy.ai.qwen.domain;
 
+import com.czy.ai.qwen.common.config.QwenConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.PostConstruct;
 
 /**
  * 会话管理器
@@ -21,15 +22,10 @@ import javax.annotation.PostConstruct;
 @Component
 public class SessionManage {
 
-    @Value("${ai.session.timeout-seconds:1800}")
-    private int sessionTimeoutSeconds;
+    @Resource
+    private QwenConfig qwenConfig;
 
     private final ConcurrentHashMap<String, SessionContext> sessionContextMap = new ConcurrentHashMap<>();
-
-    @PostConstruct
-    public void init() {
-        log.info("SessionManager 初始化完成，会话超时时间: {} 秒", sessionTimeoutSeconds);
-    }
 
     public SessionContext getOrCreate(String sessionId, String userId, String systemPrompt) {
         return sessionContextMap.computeIfAbsent(sessionId, k -> createNewSession(k, userId, systemPrompt));
@@ -58,9 +54,9 @@ public class SessionManage {
         }
     }
 
-    @Scheduled(fixedRateString = "${ai.session.cleanup-interval-ms:60000}")
+    @Scheduled(fixedRateString = "#{qwenConfig.session.cleanupIntervalMs}")
     public void cleanupExpiredSessions() {
-        long timeoutMillis = TimeUnit.SECONDS.toMillis(sessionTimeoutSeconds);
+        long timeoutMillis = TimeUnit.SECONDS.toMillis(qwenConfig.getSession().getTimeoutSeconds());
         int[] removedCount = {0};
         int[] totalMessages = {0};
 
