@@ -43,7 +43,7 @@ public class QwenStreamServiceImpl implements IQwenStreamService {
 
         executorService.execute(() -> {
             try {
-                SessionContext sessionContext = sessionManager.getOrCreate(params.getSessionId(), params.getSystemPrompt());
+                SessionContext sessionContext = sessionManager.getOrCreate(params.getSessionId(), params.getUserId(), params.getSystemPrompt());
                 sessionContext.addUserMessage(AiStringUtils.escapeJson(params.getQuestion()));
 
                 String response = sendStreamRequest(new ArrayList<>(sessionContext.getMessages()),

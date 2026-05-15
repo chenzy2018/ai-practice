@@ -17,13 +17,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class SessionContext {
 
     private final String sessionId;
+    private final String userId;
     private final List<Message> messages;
     private final String systemPrompt;
     private volatile long lastActiveTime;
 
     @Builder
-    public SessionContext(String sessionId, String systemPrompt) {
+    public SessionContext(String sessionId, String userId, String systemPrompt) {
         this.sessionId = sessionId;
+        this.userId = userId;
         this.messages = new CopyOnWriteArrayList<>();
         this.systemPrompt = systemPrompt;
         this.lastActiveTime = System.currentTimeMillis();

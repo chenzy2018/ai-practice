@@ -23,4 +23,5 @@ public class ChatRequest {
     private String systemPrompt;
     private String model;
     private Double temperature;
+    private String userId;
 }

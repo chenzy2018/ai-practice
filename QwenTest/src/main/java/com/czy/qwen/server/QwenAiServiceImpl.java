@@ -69,11 +69,11 @@ public class QwenAiServiceImpl implements IQwenAiService {
         long startTime = System.currentTimeMillis();
         AiParamUtils.EffectiveParams params = AiParamUtils.extractParams(request);
 
-        SessionContext sessionContext = sessionManager.getOrCreate(params.getSessionId(), params.getSystemPrompt());
+        SessionContext sessionContext = sessionManager.getOrCreate(params.getSessionId(), params.getUserId(), params.getSystemPrompt());
         sessionManager.updateLastActiveTime(params.getSessionId());
 
-        log.info("多轮对话请求 - sessionId: {}, question: {}, hasSystemPrompt: {}, model: {}, temperature: {}, 历史消息数: {}",
-                params.getSessionId(), AiStringUtils.truncate(params.getQuestion()),
+        log.info("多轮对话请求 - sessionId: {}, userId: {}, question: {}, hasSystemPrompt: {}, model: {}, temperature: {}, 历史消息数: {}",
+                params.getSessionId(), params.getUserId(), AiStringUtils.truncate(params.getQuestion()),
                 AiStringUtils.isNotBlank(params.getSystemPrompt()),
                 params.getModel(), params.getTemperature(), sessionContext.getMessageCount());
 
@@ -110,22 +110,23 @@ public class QwenAiServiceImpl implements IQwenAiService {
     }
 
     @Override
-    public Result<List<SessionInfo>> listSessions() {
-        List<SessionInfo> sessionInfos = sessionManager.getAllSessions().entrySet().stream()
+    public Result<Map<String, List<SessionInfo>>> listSessions() {
+        Map<String, List<SessionInfo>> groupedSessions = sessionManager.getAllSessions().entrySet().stream()
                 .map(entry -> {
                     SessionContext context = entry.getValue();
                     return SessionInfo.builder()
                             .sessionId(context.getSessionId())
+                            .userId(context.getUserId())
                             .messageCount(context.getMessageCount())
                             .lastActiveTime(formatTimeToHongKong(context.getLastActiveTime()))
                             .hasSystemPrompt(AiStringUtils.isNotBlank(context.getSystemPrompt()))
                             .build();
                 })
-                .sorted((a, b) -> b.getLastActiveTime().compareTo(a.getLastActiveTime()))
-                .collect(Collectors.toList());
+                .collect(Collectors.groupingBy(SessionInfo::getUserId));
 
-        log.info("查询会话列表 - 活跃会话数: {}", sessionInfos.size());
-        return Result.success(sessionInfos);
+        int totalSessions = groupedSessions.values().stream().mapToInt(List::size).sum();
+        log.info("查询会话列表 - 活跃会话数: {}, 用户数: {}", totalSessions, groupedSessions.size());
+        return Result.success(groupedSessions);
     }
 
     @Override
@@ -136,7 +137,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
 
         SessionContext removed = sessionManager.remove(sessionId);
         if (removed != null) {
-            log.info("删除会话 - sessionId: {}, 消息数: {}", sessionId, removed.getMessageCount());
+            log.info("删除会话 - sessionId: {}, userId: {}, 消息数: {}", sessionId, removed.getUserId(), removed.getMessageCount());
             return Result.success("会话 " + sessionId + " 已删除");
         }
         return Result.fail("会话 " + sessionId + " 不存在");
@@ -155,6 +156,7 @@ public class QwenAiServiceImpl implements IQwenAiService {
 
         Map<String, Object> info = new HashMap<>();
         info.put("sessionId", context.getSessionId());
+        info.put("userId", context.getUserId());
         info.put("messageCount", context.getMessageCount());
         info.put("lastActiveTime", formatTimeToHongKong(context.getLastActiveTime()));
         info.put("hasSystemPrompt", AiStringUtils.isNotBlank(context.getSystemPrompt()));

@@ -18,6 +18,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SessionInfo {
     private String sessionId;
+    private String userId;
     private Integer messageCount;
     private String lastActiveTime;
     private Boolean hasSystemPrompt;

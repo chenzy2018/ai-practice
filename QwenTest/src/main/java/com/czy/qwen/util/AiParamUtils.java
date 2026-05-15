@@ -49,6 +49,7 @@ public final class AiParamUtils {
                 .temperature(getEffectiveTemperature(request.getTemperature()))
                 .systemPrompt(request.getSystemPrompt())
                 .question(request.getQuestion())
+                .userId(request.getUserId())
                 .build();
     }
 
@@ -63,5 +64,6 @@ public final class AiParamUtils {
         Double temperature;
         String systemPrompt;
         String question;
+        String userId;
     }
 }

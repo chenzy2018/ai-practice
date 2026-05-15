@@ -26,7 +26,7 @@ public interface IQwenAiService {
 
     Result<String> clearContext(String sessionId);
 
-    Result<List<SessionInfo>> listSessions();
+    Result<Map<String, List<SessionInfo>>> listSessions();
 
     Result<String> removeSession(String sessionId);
 

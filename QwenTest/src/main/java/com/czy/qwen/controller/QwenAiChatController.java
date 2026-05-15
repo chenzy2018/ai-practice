@@ -1,5 +1,6 @@
 package com.czy.qwen.controller;
 
+import com.czy.qwen.annotation.RateLimit;
 import com.czy.qwen.req.ChatRequest;
 import com.czy.qwen.resp.ChatResponse;
 import com.czy.qwen.resp.Result;
@@ -8,6 +9,7 @@ import com.czy.qwen.server.IQwenAiService;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +32,13 @@ public class QwenAiChatController {
     }
 
     @PostMapping("/ai/chatWithContext")
-    public Result<ChatResponse> chatWithContext(@RequestBody ChatRequest request) {
+    @RateLimit
+    public Result<ChatResponse> chatWithContext(@RequestBody ChatRequest request, HttpServletRequest httpRequest) {
+        String userId = httpRequest.getHeader("X-User-Id");
+        if (userId == null || userId.isEmpty()) {
+            userId = httpRequest.getRemoteAddr();
+        }
+        request.setUserId(userId);
         return qwenAiService.chatWithContext(request);
     }
 
@@ -40,12 +48,13 @@ public class QwenAiChatController {
     }
 
     @GetMapping("/ai/session/new")
-    public Result<String> createSession() {
+    @RateLimit
+    public Result<String> createSession(HttpServletRequest request) {
         return Result.success(qwenAiService.generateSessionId());
     }
 
     @GetMapping("/ai/session/list")
-    public Result<List<SessionInfo>> listSessions() {
+    public Result<Map<String, List<SessionInfo>>> listSessions() {
         return qwenAiService.listSessions();
     }
 

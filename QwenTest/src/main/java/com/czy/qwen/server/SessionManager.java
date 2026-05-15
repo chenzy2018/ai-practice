@@ -31,8 +31,8 @@ public class SessionManager {
         log.info("SessionManager 初始化完成，会话超时时间: {} 秒", sessionTimeoutSeconds);
     }
 
-    public SessionContext getOrCreate(String sessionId, String systemPrompt) {
-        return sessionContextMap.computeIfAbsent(sessionId, k -> createNewSession(k, systemPrompt));
+    public SessionContext getOrCreate(String sessionId, String userId, String systemPrompt) {
+        return sessionContextMap.computeIfAbsent(sessionId, k -> createNewSession(k, userId, systemPrompt));
     }
 
     public SessionContext get(String sessionId) {
@@ -69,8 +69,8 @@ public class SessionManager {
             if (context.isExpired(timeoutMillis)) {
                 removedCount[0]++;
                 totalMessages[0] += context.getMessageCount();
-                log.info("清理过期会话 - sessionId: {}, 消息数: {}, 空闲时间: {}秒",
-                        entry.getKey(), context.getMessageCount(),
+                log.info("清理过期会话 - sessionId: {}, userId: {}, 消息数: {}, 空闲时间: {}秒",
+                        entry.getKey(), context.getUserId(), context.getMessageCount(),
                         TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - context.getLastActiveTime()));
                 return true;
             }
@@ -83,10 +83,12 @@ public class SessionManager {
         }
     }
 
-    private SessionContext createNewSession(String sessionId, String systemPrompt) {
-        log.info("创建新会话 - sessionId: {}, hasSystemPrompt: {}", sessionId, systemPrompt != null && !systemPrompt.trim().isEmpty());
+    private SessionContext createNewSession(String sessionId, String userId, String systemPrompt) {
+        log.info("创建新会话 - sessionId: {}, userId: {}, hasSystemPrompt: {}", 
+                sessionId, userId, systemPrompt != null && !systemPrompt.trim().isEmpty());
         return SessionContext.builder()
                 .sessionId(sessionId)
+                .userId(userId)
                 .systemPrompt(systemPrompt)
                 .build();
     }
