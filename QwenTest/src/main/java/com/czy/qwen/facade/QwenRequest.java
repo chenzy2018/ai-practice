@@ -36,5 +36,6 @@ public class QwenRequest {
         private Double top_p = 0.8;
         @Builder.Default
         private Integer max_tokens = 1024;
+        private Boolean stream;
     }
 }

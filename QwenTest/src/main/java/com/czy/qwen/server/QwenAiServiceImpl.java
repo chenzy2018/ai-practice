@@ -1,19 +1,14 @@
 package com.czy.qwen.server;
 
-import com.czy.qwen.config.QwenConfig;
 import com.czy.qwen.facade.Message;
-import com.czy.qwen.facade.QwenRequest;
+import com.czy.qwen.facade.QwenApiClient;
 import com.czy.qwen.req.ChatRequest;
 import com.czy.qwen.resp.ChatResponse;
 import com.czy.qwen.resp.Result;
 import com.czy.qwen.resp.SessionInfo;
+import com.czy.qwen.util.AiParamUtils;
 import com.czy.qwen.util.AiStringUtils;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -22,7 +17,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -34,36 +28,32 @@ import java.util.stream.Collectors;
 @Service
 public class QwenAiServiceImpl implements IQwenAiService {
 
-    private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
-    private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
     private static final ZoneId HK_TIME_ZONE = ZoneId.of("Asia/Hong_Kong");
     private static final DateTimeFormatter HK_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
 
     @Resource
-    private QwenConfig qwenConfig;
-
-    @Resource
     private SessionManager sessionManager;
 
-    private final OkHttpClient client = createOkHttpClient();
+    @Resource
+    private QwenApiClient qwenApiClient;
 
     @Override
     public String generateSessionId() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        return AiParamUtils.generateSessionId();
     }
 
     @Override
     public Result<String> chat(String question, String model, Double temperature) {
         long startTime = System.currentTimeMillis();
-        String effectiveModel = getEffectiveModel(model);
-        Double effectiveTemperature = getEffectiveTemperature(temperature);
+        String effectiveModel = AiParamUtils.getEffectiveModel(model);
+        Double effectiveTemperature = AiParamUtils.getEffectiveTemperature(temperature);
 
         log.info("单轮对话请求 - question: {}, model: {}, temperature: {}",
                 AiStringUtils.truncate(question), effectiveModel, effectiveTemperature);
 
         try {
             List<Message> messages = Collections.singletonList(Message.user(AiStringUtils.escapeJson(question)));
-            String response = sendRequest(messages, effectiveModel, effectiveTemperature);
+            String response = qwenApiClient.sendRequest(messages, effectiveModel, effectiveTemperature);
             String answer = AiStringUtils.parseTextFromResponse(response);
 
             log.info("单轮对话响应 - answer: {}, 耗时: {}ms", AiStringUtils.truncate(answer), System.currentTimeMillis() - startTime);
@@ -77,33 +67,31 @@ public class QwenAiServiceImpl implements IQwenAiService {
     @Override
     public Result<ChatResponse> chatWithContext(ChatRequest request) {
         long startTime = System.currentTimeMillis();
-        String effectiveSessionId = getEffectiveSessionId(request.getSessionId());
-        String effectiveModel = getEffectiveModel(request.getModel());
-        Double effectiveTemperature = getEffectiveTemperature(request.getTemperature());
+        AiParamUtils.EffectiveParams params = AiParamUtils.extractParams(request);
 
-        SessionContext sessionContext = sessionManager.getOrCreate(effectiveSessionId, request.getSystemPrompt());
-        sessionManager.updateLastActiveTime(effectiveSessionId);
+        SessionContext sessionContext = sessionManager.getOrCreate(params.getSessionId(), params.getSystemPrompt());
+        sessionManager.updateLastActiveTime(params.getSessionId());
 
         log.info("多轮对话请求 - sessionId: {}, question: {}, hasSystemPrompt: {}, model: {}, temperature: {}, 历史消息数: {}",
-                effectiveSessionId, AiStringUtils.truncate(request.getQuestion()),
-                AiStringUtils.isNotBlank(request.getSystemPrompt()),
-                effectiveModel, effectiveTemperature, sessionContext.getMessageCount());
+                params.getSessionId(), AiStringUtils.truncate(params.getQuestion()),
+                AiStringUtils.isNotBlank(params.getSystemPrompt()),
+                params.getModel(), params.getTemperature(), sessionContext.getMessageCount());
 
         try {
-            sessionContext.addUserMessage(AiStringUtils.escapeJson(request.getQuestion()));
-            String response = sendRequest(new ArrayList<>(sessionContext.getMessages()), effectiveModel, effectiveTemperature);
+            sessionContext.addUserMessage(AiStringUtils.escapeJson(params.getQuestion()));
+            String response = qwenApiClient.sendRequest(new ArrayList<>(sessionContext.getMessages()), params.getModel(), params.getTemperature());
             String answer = AiStringUtils.parseTextFromResponse(response);
             sessionContext.addAssistantMessage(answer);
 
             log.info("多轮对话响应 - sessionId: {}, answer: {}, 耗时: {}ms, 历史消息数: {}",
-                    effectiveSessionId, AiStringUtils.truncate(answer), System.currentTimeMillis() - startTime, sessionContext.getMessageCount());
+                    params.getSessionId(), AiStringUtils.truncate(answer), System.currentTimeMillis() - startTime, sessionContext.getMessageCount());
 
             return Result.success(ChatResponse.builder()
-                    .sessionId(effectiveSessionId)
+                    .sessionId(params.getSessionId())
                     .answer(answer)
                     .build());
         } catch (IOException e) {
-            log.error("多轮对话异常 - sessionId: {}, error: {}", effectiveSessionId, e.getMessage());
+            log.error("多轮对话异常 - sessionId: {}, error: {}", params.getSessionId(), e.getMessage());
             return Result.fail(e.getMessage());
         }
     }
@@ -174,60 +162,9 @@ public class QwenAiServiceImpl implements IQwenAiService {
         return Result.success(info);
     }
 
-    private OkHttpClient createOkHttpClient() {
-        return new OkHttpClient.Builder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .build();
-    }
-
-    private String sendRequest(List<Message> messages, String model, Double temperature) throws IOException {
-        QwenRequest requestBody = QwenRequest.builder()
-                .model(model)
-                .input(QwenRequest.Input.builder().messages(messages).build())
-                .parameters(QwenRequest.Parameters.builder().temperature(temperature).build())
-                .build();
-        String json = AiStringUtils.toJson(requestBody);
-
-        log.debug("AI请求体 - {}", AiStringUtils.truncate(json, 1000));
-
-        Request request = new Request.Builder()
-                .url(API_URL)
-                .post(RequestBody.create(json, JSON_MEDIA_TYPE))
-                .addHeader("Authorization", "Bearer " + qwenConfig.getApiKey())
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String errorBody = response.body() != null ? response.body().string() : "";
-                log.error("API调用失败 - status: {}, errorBody: {}", response.code(), AiStringUtils.truncate(errorBody));
-                throw new IOException("API调用失败: " + response.code());
-            }
-            String responseBody = response.body() != null ? response.body().string() : "";
-            log.debug("AI响应体 - {}", AiStringUtils.truncate(responseBody, 2000));
-            return responseBody;
-        }
-    }
-
     private String formatTimeToHongKong(long timestamp) {
         return Instant.ofEpochMilli(timestamp)
                 .atZone(HK_TIME_ZONE)
                 .format(HK_FORMATTER);
-    }
-
-    private String getEffectiveSessionId(String sessionId) {
-        return AiStringUtils.isNotBlank(sessionId) ? sessionId : generateSessionId();
-    }
-
-    private String getEffectiveModel(String model) {
-        return AiStringUtils.isNotBlank(model) ? model.trim() : DEFAULT_MODEL;
-    }
-
-    private Double getEffectiveTemperature(Double temperature) {
-        if (temperature == null) {
-            return DEFAULT_TEMPERATURE;
-        }
-        return Math.max(0.0, Math.min(1.0, temperature));
     }
 }
