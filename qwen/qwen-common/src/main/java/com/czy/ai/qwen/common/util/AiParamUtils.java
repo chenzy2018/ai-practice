@@ -1,0 +1,63 @@
+package com.czy.ai.qwen.common.util;
+
+import com.czy.ai.qwen.common.dto.ChatRequest;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.UUID;
+
+public final class AiParamUtils {
+
+    public static final String DEFAULT_MODEL = "qwen-turbo";
+    public static final Double DEFAULT_TEMPERATURE = 0.7;
+
+    private AiParamUtils() {
+    }
+
+    public static String generateSessionId() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    }
+
+    public static String getEffectiveSessionId(String sessionId) {
+        return AiStringUtils.isNotBlank(sessionId) ? sessionId : generateSessionId();
+    }
+
+    public static String getEffectiveModel(String model) {
+        return AiStringUtils.isNotBlank(model) ? model.trim() : DEFAULT_MODEL;
+    }
+
+    public static Double getEffectiveTemperature(Double temperature) {
+        if (temperature == null) {
+            return DEFAULT_TEMPERATURE;
+        }
+        return Math.max(0.0, Math.min(1.0, temperature));
+    }
+
+    public static EffectiveParams extractParams(ChatRequest request) {
+        return EffectiveParams.builder()
+                .sessionId(getEffectiveSessionId(request.getSessionId()))
+                .model(getEffectiveModel(request.getModel()))
+                .temperature(getEffectiveTemperature(request.getTemperature()))
+                .systemPrompt(request.getSystemPrompt())
+                .question(request.getQuestion())
+                .userId(request.getUserId())
+                .build();
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EffectiveParams {
+        String sessionId;
+        String model;
+        Double temperature;
+        String systemPrompt;
+        String question;
+        String userId;
+    }
+}
