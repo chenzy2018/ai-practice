@@ -123,3 +123,15 @@ private static final String SYS_JSON_MODE =
   }
 }
 ```
+
+
+# Knife4j 集成
+
+1. 根 pom.xml - 添加了 knife4j-openapi3-jakarta-spring-boot-starter 版本管理（版本 4.0.0）
+2. qwen-starter pom.xml - 添加了 Knife4j 依赖
+3. application.yml - 添加了 Knife4j 配置（标题、描述、版本、接口分组等）
+   访问地址：
+
+- Knife4j UI: http://localhost:8668/doc.html
+- Swagger UI: http://localhost:8668/swagger-ui.html
+- OpenAPI 文档: http://localhost:8668/v3/api-docs

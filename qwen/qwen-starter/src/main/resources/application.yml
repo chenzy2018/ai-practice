@@ -1,5 +1,5 @@
 server:
-  port: 8668
+  port: 8678
 
 spring:
   application:
@@ -22,3 +22,7 @@ ai:
 logging:
   level:
     com.czy.ai.qwen: INFO
+
+# Knife4j 配置
+knife4j:
+  enable: true
