@@ -52,4 +52,13 @@ public class SessionContext {
         messages.add(Message.assistant(content));
         updateLastActiveTime();
     }
+
+    public void trimMessages(int maxSize) {
+        if (messages.size() > maxSize) {
+            int removed = messages.size() - maxSize;
+            for (int i = 0; i < removed; i++) {
+                messages.remove(0);
+            }
+        }
+    }
 }

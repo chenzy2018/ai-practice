@@ -16,30 +16,64 @@ import org.springframework.context.annotation.Configuration;
 public class QwenConfig {
 
     private String apiKey;
+
     private String apiUrl;
+
     private OkHttpConfig http;
+
     private SessionConfig session;
 
     /**
      * OkHttp HTTP客户端配置
-     * 包含连接超时、读取超时、写入超时、流式读取超时配置
      */
     @Data
     public static class OkHttpConfig {
+
+        /**
+         * 连接超时时间（秒）
+         */
         private int connectTimeout;
+
+        /**
+         * 读取超时时间（秒）
+         */
         private int readTimeout;
+
+        /**
+         * 写入超时时间（秒）
+         */
         private int writeTimeout;
+
+        /**
+         * 流式读取超时时间（秒）
+         */
         private int streamReadTimeout;
     }
 
     /**
      * 会话管理配置
-     * 包含会话超时时间、清理间隔、每分钟最大会话数配置
      */
     @Data
     public static class SessionConfig {
+
+        /**
+         * 会话超时时间（秒）
+         */
         private long timeoutSeconds;
+
+        /**
+         * 会话清理间隔（毫秒）
+         */
         private long cleanupIntervalMs;
+
+        /**
+         * 每分钟最大会话数
+         */
         private int maxSessionsPerMinute;
+
+        /**
+         * 最大保留消息数
+         */
+        private int maxMessages = 20;
     }
 }

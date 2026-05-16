@@ -82,14 +82,14 @@ public class GlobalExceptionHandler {
 
     /**
      * 判断是否为 SSE 请求
-     *
-     * @param accept 请求头 Accept
-     * @param uri    请求路径
-     * @return true 表示 SSE 请求
+     * 优先根据 URI 判断（/stream/ 路径一定是 SSE 请求）
+     * 再根据 Accept header 判断
      */
     private boolean isSseRequest(String accept, String uri) {
-        return (accept != null && accept.contains(MediaType.TEXT_EVENT_STREAM_VALUE)) ||
-                (uri != null && uri.contains("/stream/"));
+        if (uri != null && uri.contains("/stream/")) {
+            return true;
+        }
+        return accept != null && accept.contains(MediaType.TEXT_EVENT_STREAM_VALUE);
     }
 
     /**

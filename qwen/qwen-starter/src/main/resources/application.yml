@@ -21,6 +21,7 @@ ai:
       timeout-seconds: 1800
       cleanup-interval-ms: 60000
       max-sessions-per-minute: 10
+      max-messages: 20
 
 logging:
   level:

@@ -1,6 +1,8 @@
-#ai:
-#  qwen:
+ai:
+  qwen:
 #    api-key: ${QWEN_API_KEY:sk-your-pre-api-key}
+    session:
+      max-messages: 50
 
 logging:
   level:

@@ -76,6 +76,28 @@ public class SessionManage {
             log.info("会话清理完成 - 共清理 {} 个会话, {} 条消息, 当前剩余: {} 个会话",
                     removedCount[0], totalMessages[0], sessionContextMap.size());
         }
+
+        trimOversizedSessions();
+    }
+
+    private void trimOversizedSessions() {
+        int maxMessages = qwenConfig.getSession().getMaxMessages();
+        int[] trimmedCount = {0};
+        int[] totalTrimmed = {0};
+
+        for (SessionContext context : sessionContextMap.values()) {
+            if (context.getMessageCount() > maxMessages) {
+                int trimmed = context.getMessageCount() - maxMessages;
+                context.trimMessages(maxMessages);
+                trimmedCount[0]++;
+                totalTrimmed[0] += trimmed;
+            }
+        }
+
+        if (trimmedCount[0] > 0) {
+            log.info("会话裁剪完成 - 共裁剪 {} 个会话, {} 条消息, 当前最大保留: {} 条",
+                    trimmedCount[0], totalTrimmed[0], maxMessages);
+        }
     }
 
     private SessionContext createNewSession(String sessionId, String userId, String systemPrompt) {
