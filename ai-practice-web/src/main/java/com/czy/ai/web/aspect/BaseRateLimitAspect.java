@@ -1,7 +1,7 @@
 package com.czy.ai.web.aspect;
 
 import com.czy.ai.common.annotation.RateLimit;
-import com.czy.ai.common.dto.Result;
+import com.czy.ai.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -26,7 +26,7 @@ public abstract class BaseRateLimitAspect {
         String sessionId = getSessionId(joinPoint);
 
         if (!tryAcquireSession(userId, sessionId)) {
-            return Result.fail(429, "请求过于频繁，请稍后再试");
+            throw new BusinessException(429, "请求过于频繁，请稍后再试");
         }
 
         return joinPoint.proceed();
