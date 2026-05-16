@@ -1,7 +1,7 @@
 package com.czy.ai.qwen.web.controller;
 
-import com.czy.ai.qwen.common.annotation.ControllerLog;
-import com.czy.ai.qwen.common.annotation.RateLimit;
+import com.czy.ai.common.annotation.ControllerLog;
+import com.czy.ai.common.annotation.RateLimit;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.service.IAiStreamService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 /**
  * AI 流式对话 Controller

@@ -13,6 +13,12 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <!-- ai-practice-web -->
+        <dependency>
+            <groupId>com.czy.ai</groupId>
+            <artifactId>ai-practice-web</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.czy.ai</groupId>
             <artifactId>qwen-service</artifactId>

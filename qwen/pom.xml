@@ -15,37 +15,30 @@
 
     <modules>
         <module>qwen-common</module>
-        <module>qwen-domain</module>
-        <module>qwen-infrastructure</module>
         <module>qwen-service</module>
         <module>qwen-starter</module>
     </modules>
 
-    <properties>
-        <!-- Qwen 独有依赖版本 -->
-        <okhttp.version>4.12.0</okhttp.version>
-    </properties>
-
     <dependencyManagement>
         <dependencies>
+            <!-- ai-practice-common -->
+            <dependency>
+                <groupId>com.czy.ai</groupId>
+                <artifactId>ai-practice-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ai-practice-web -->
+            <dependency>
+                <groupId>com.czy.ai</groupId>
+                <artifactId>ai-practice-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- Qwen Common Module -->
             <dependency>
                 <groupId>com.czy.ai</groupId>
                 <artifactId>qwen-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- Qwen Domain Module -->
-            <dependency>
-                <groupId>com.czy.ai</groupId>
-                <artifactId>qwen-domain</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- Qwen Infrastructure Module -->
-            <dependency>
-                <groupId>com.czy.ai</groupId>
-                <artifactId>qwen-infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -61,13 +54,6 @@
                 <groupId>com.czy.ai</groupId>
                 <artifactId>qwen-starter</artifactId>
                 <version>${project.version}</version>
-            </dependency>
-
-            <!-- OKHttp (Qwen 独有) -->
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>${okhttp.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

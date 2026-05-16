@@ -1,8 +1,8 @@
 package com.czy.ai.qwen.service;
 
+import com.czy.ai.common.dto.Result;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.common.dto.ChatResponse;
-import com.czy.ai.qwen.common.dto.Result;
 import com.czy.ai.qwen.common.dto.SessionInfo;
 
 import java.util.List;

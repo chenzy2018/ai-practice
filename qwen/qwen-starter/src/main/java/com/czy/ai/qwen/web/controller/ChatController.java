@@ -1,16 +1,16 @@
 package com.czy.ai.qwen.web.controller;
 
-import com.czy.ai.qwen.common.annotation.ControllerLog;
-import com.czy.ai.qwen.common.annotation.RateLimit;
+import com.czy.ai.common.annotation.ControllerLog;
+import com.czy.ai.common.annotation.RateLimit;
+import com.czy.ai.common.dto.Result;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.common.dto.ChatResponse;
-import com.czy.ai.qwen.common.dto.Result;
 import com.czy.ai.qwen.common.dto.SessionInfo;
 import com.czy.ai.qwen.service.IAiService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 

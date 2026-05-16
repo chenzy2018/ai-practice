@@ -1,11 +1,12 @@
 package com.czy.ai.qwen.service.impl;
 
+import com.czy.ai.qwen.common.Message;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.common.util.AiParamUtils;
 import com.czy.ai.qwen.common.util.AiStringUtils;
-import com.czy.ai.qwen.domain.SessionContext;
-import com.czy.ai.qwen.infrastructure.client.QwenApiClient;
-import com.czy.ai.qwen.domain.SessionManage;
+import com.czy.ai.qwen.common.session.SessionContext;
+import com.czy.ai.qwen.common.outclient.QwenApiClient;
+import com.czy.ai.qwen.common.session.SessionManage;
 import com.czy.ai.qwen.service.IAiStreamService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -94,7 +95,7 @@ public class AiStreamServiceImpl implements IAiStreamService {
      * @return 完整响应内容
      * @throws IOException IO异常
      */
-    private String sendStreamRequest(java.util.List<com.czy.ai.qwen.domain.Message> messages, String model, Double temperature, SseEmitter emitter) throws IOException {
+    private String sendStreamRequest(java.util.List<Message> messages, String model, Double temperature, SseEmitter emitter) throws IOException {
         StringBuilder fullResponse = new StringBuilder();
         int lastLength = 0;
 
