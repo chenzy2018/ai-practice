@@ -1,6 +1,5 @@
 package com.czy.ai.qwen.web.aspect;
 
-import com.czy.ai.qwen.common.annotation.RateLimit;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.common.dto.Result;
 import com.czy.ai.qwen.service.RateLimitService;
