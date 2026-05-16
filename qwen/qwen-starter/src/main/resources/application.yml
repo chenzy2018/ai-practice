@@ -1,9 +1,12 @@
 server:
-  port: 8678
+  port: 8668
+  shutdown: graceful
 
 spring:
   application:
     name: qwen-ai-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 ai:
   qwen:
@@ -23,6 +26,21 @@ logging:
   level:
     com.czy.ai.qwen: INFO
 
-# Knife4j 配置
 knife4j:
   enable: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true

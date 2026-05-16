@@ -135,3 +135,7 @@ private static final String SYS_JSON_MODE =
 - Knife4j UI: http://localhost:8668/doc.html
 - Swagger UI: http://localhost:8668/swagger-ui.html
 - OpenAPI 文档: http://localhost:8668/v3/api-docs
+
+# 多环境配置文件区分
+
+vm启动数：-Dspring.profiles.active=dev
