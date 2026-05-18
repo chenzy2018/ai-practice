@@ -1,6 +1,5 @@
 package com.czy.ai.qwen.web.controller;
 
-import com.czy.ai.common.annotation.ControllerLog;
 import com.czy.ai.common.annotation.RateLimit;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.service.IAiStreamService;
@@ -16,7 +15,7 @@ import jakarta.annotation.Resource;
  * AI 流式对话 Controller
  * 提供 SSE 流式响应风格的对话接口
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @RestController
 @RequestMapping("/ai/stream")

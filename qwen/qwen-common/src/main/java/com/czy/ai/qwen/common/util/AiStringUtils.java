@@ -11,7 +11,7 @@ import java.io.IOException;
 /**
  * 字符串工具类
  *
- * @author chenzhenyu 2026年05月14日
+ * @author nober 2026年05月14日
  */
 public final class AiStringUtils extends StringUtils {
 

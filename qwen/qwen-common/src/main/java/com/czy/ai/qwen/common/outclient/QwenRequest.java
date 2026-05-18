@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 通义千问请求 DTO
  *
- * @author chenzhenyu 2026年05月14日
+ * @author nober 2026年05月14日
  */
 @Getter
 @Setter

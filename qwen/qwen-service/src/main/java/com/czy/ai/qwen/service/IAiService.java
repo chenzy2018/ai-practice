@@ -8,6 +8,11 @@ import com.czy.ai.qwen.common.dto.SessionInfo;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AI 同步服务接口
+ * 
+ * @author nober
+ */
 public interface IAiService {
 
     String generateSessionId();

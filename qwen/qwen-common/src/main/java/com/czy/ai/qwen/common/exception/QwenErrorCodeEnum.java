@@ -5,7 +5,7 @@ import com.czy.ai.common.exception.BaseErrorCodeEnum;
 /**
  * Qwen 错误码枚举
  *
- * @author chenzhenyu 2026年05月16日
+ * @author nober 2026年05月16日
  */
 public enum QwenErrorCodeEnum implements BaseErrorCodeEnum {
     /**

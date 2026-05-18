@@ -6,7 +6,7 @@ import lombok.Getter;
  * 业务异常类
  * 业务层统一使用此类抛出异常
  *
- * @author chenzhenyu 2026年05月16日
+ * @author nober 2026年05月16日
  */
 public class BusinessException extends RuntimeException {
 

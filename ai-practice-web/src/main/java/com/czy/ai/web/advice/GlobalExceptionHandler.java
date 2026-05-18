@@ -17,7 +17,7 @@ import java.io.IOException;
  * 全局异常处理器
  * 统一处理系统中的异常，返回标准化的错误响应
  *
- * @author chenzhenyu 2026年05月16日
+ * @author nober 2026年05月16日
  */
 @Slf4j
 @RestControllerAdvice

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
  * Qwen AI 配置类
  * 统一管理 AI 相关的配置项，包括 API密钥、URL、HTTP超时、会话管理配置
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @Data
 @Configuration

@@ -5,7 +5,7 @@ import lombok.Getter;
 /**
  * 消息 DTO
  *
- * @author chenzhenyu 2026年05月14日
+ * @author nober 2026年05月14日
  */
 @Getter
 public class Message {

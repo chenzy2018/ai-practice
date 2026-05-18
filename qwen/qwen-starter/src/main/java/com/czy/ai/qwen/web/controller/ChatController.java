@@ -18,7 +18,7 @@ import java.util.Map;
  * AI 对话 Controller
  * 提供 RESTful 风格的对话接口
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @RestController
 @RequestMapping("/ai")

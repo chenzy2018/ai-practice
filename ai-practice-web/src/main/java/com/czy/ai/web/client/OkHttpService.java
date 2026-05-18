@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * OkHttp 封装服务
  * 提供统一的 HTTP 请求能力
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @Slf4j
 @Service

@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  * 会话管理器
  * 负责会话的创建、存储、查询和超时清理
  *
- * @author chenzhenyu 2026年05月14日
+ * @author nober 2026年05月14日
  */
 @Slf4j
 @Component

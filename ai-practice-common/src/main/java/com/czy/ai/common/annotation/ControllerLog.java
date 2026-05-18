@@ -6,7 +6,7 @@ import java.lang.annotation.*;
  * Controller 日志注解
  * 标注在 Controller 方法上，自动打印入参和出参日志
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

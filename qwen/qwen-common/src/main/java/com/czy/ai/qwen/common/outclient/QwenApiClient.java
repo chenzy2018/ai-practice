@@ -17,7 +17,7 @@ import jakarta.annotation.Resource;
  * Qwen API 客户端
  * 封装 Qwen AI 服务的调用逻辑
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @Slf4j
 @Service

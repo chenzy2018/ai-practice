@@ -22,6 +22,13 @@ ai:
       cleanup-interval-ms: 60000
       max-sessions-per-minute: 10
       max-messages: 20
+  langchain4j:
+    api-key: ${QWEN_API_KEY:sk-33b96ae17cba4c928a8bf7bcab5b5b08}
+    model-name: qwen-turbo
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    temperature: 0.7
+    max-tokens: 2048
+    timeout: 60
 
 logging:
   level:

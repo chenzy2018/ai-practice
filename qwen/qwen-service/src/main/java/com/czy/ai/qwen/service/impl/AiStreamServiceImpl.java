@@ -28,7 +28,7 @@ import java.util.Map;
  * AI 流式对话服务实现
  * 提供基于 SSE 的流式响应能力
  *
- * @author chenzhenyu 2026年05月15日
+ * @author nober 2026年05月15日
  */
 @Slf4j
 @Service
