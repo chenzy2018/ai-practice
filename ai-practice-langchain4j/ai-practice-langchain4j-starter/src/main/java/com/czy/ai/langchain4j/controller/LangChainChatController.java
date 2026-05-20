@@ -28,8 +28,8 @@ public class LangChainChatController {
      */
     @GetMapping("/chat")
     @ControllerLog(desc = "langchain 对话")
-    public Result<String> chat(@RequestParam String question,
-                               @RequestParam String aiType) {
+    public Result<String> chat(@RequestParam("question") String question,
+                               @RequestParam("aiType") String aiType) {
         return aiChatProviderFactory.getAiChatProvider(AiType.valueOf(aiType)).chat(question);
     }
 

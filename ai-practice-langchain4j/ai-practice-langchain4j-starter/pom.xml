@@ -51,6 +51,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- ai-practice-web -->
+        <dependency>
+            <groupId>com.czy.ai</groupId>
+            <artifactId>ai-practice-web</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.czy.ai</groupId>
             <artifactId>ai-practice-langchain4j-common</artifactId>
