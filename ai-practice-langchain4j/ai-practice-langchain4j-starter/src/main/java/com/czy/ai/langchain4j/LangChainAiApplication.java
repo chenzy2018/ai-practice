@@ -1,4 +1,4 @@
-package com.czy.ai.qwen.web;
+package com.czy.ai.langchain4j;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,15 +7,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(
         scanBasePackages = {
-                "com.czy.ai.qwen",
+                "com.czy.ai.langchain4j",
                 "com.czy.ai.common",
                 "com.czy.ai.web"
         })
-@EnableScheduling
 @EnableConfigurationProperties
-public class QwenAiApplication {
+public class LangChainAiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(QwenAiApplication.class, args);
+        SpringApplication.run(LangChainAiApplication.class, args);
     }
 }

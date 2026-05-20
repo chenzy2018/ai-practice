@@ -1,12 +1,12 @@
 package com.czy.ai.qwen.service.impl;
 
-import com.czy.ai.qwen.common.Message;
+import com.czy.ai.common.Message;
 import com.czy.ai.qwen.common.dto.ChatRequest;
 import com.czy.ai.qwen.common.util.AiParamUtils;
 import com.czy.ai.qwen.common.util.AiStringUtils;
-import com.czy.ai.qwen.common.session.SessionContext;
+import com.czy.ai.common.session.SessionContext;
 import com.czy.ai.qwen.common.outclient.QwenApiClient;
-import com.czy.ai.qwen.common.session.SessionManage;
+import com.czy.ai.common.session.SessionManage;
 import com.czy.ai.qwen.service.IAiStreamService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

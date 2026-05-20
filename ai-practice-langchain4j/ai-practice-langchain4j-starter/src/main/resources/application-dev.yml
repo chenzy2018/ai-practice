@@ -1,0 +1,6 @@
+logging:
+  level:
+    com.czy.ai.qwen: DEBUG
+
+knife4j:
+  enable: true

@@ -1,6 +1,6 @@
 package com.czy.ai.qwen.common.outclient;
 
-import com.czy.ai.qwen.common.Message;
+import com.czy.ai.common.Message;
 import com.czy.ai.qwen.common.config.QwenConfig;
 import com.czy.ai.qwen.common.util.AiStringUtils;
 import com.czy.ai.web.client.OkHttpService;

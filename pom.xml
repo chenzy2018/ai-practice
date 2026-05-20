@@ -13,8 +13,8 @@
     <modules>
         <module>ai-practice-common</module>
         <module>ai-practice-web</module>
+        <module>ai-practice-langchain4j</module>
         <module>qwen</module>
-        <module>ai-langChain4j</module>
     </modules>
 
     <properties>
@@ -114,7 +114,25 @@
                 <artifactId>langchain4j</artifactId>
                 <version>${langchain4j.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

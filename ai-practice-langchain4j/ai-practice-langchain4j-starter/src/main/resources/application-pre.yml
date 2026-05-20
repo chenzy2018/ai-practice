@@ -1,0 +1,12 @@
+ai:
+  qwen:
+#    api-key: ${QWEN_API_KEY:sk-your-pre-api-key}
+    session:
+      max-messages: 50
+
+logging:
+  level:
+    com.czy.ai.qwen: INFO
+
+knife4j:
+  enable: false

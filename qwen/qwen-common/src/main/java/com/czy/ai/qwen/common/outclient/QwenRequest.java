@@ -1,6 +1,6 @@
 package com.czy.ai.qwen.common.outclient;
 
-import com.czy.ai.qwen.common.Message;
+import com.czy.ai.common.Message;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
