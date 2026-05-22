@@ -7,8 +7,8 @@ import com.czy.ai.langchain4j.config.QwenChatConfig;
 import com.czy.ai.langchain4j.config.WebullChatConfig;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 动态模型工厂 - 根据请求参数动态创建 ChatLanguageModel
+ * 动态模型工厂 - 根据请求参数动态创建 ChatModel
  * 支持缓存复用（Guava Cache，1小时过期，最大50实例），避免重复创建
  * 支持多种 AI 类型（QWEN、WEBULL）
  *
@@ -36,46 +36,46 @@ public class DynamicModelFactory {
     private QwenChatConfig qwenChatConfig;
 
     // Guava Cache: 1小时未访问过期，最大缓存50个实例
-    private final Cache<String, ChatLanguageModel> chatModelCache = CacheBuilder.newBuilder()
+    private final Cache<String, ChatModel> chatModelCache = CacheBuilder.newBuilder()
             .maximumSize(50)
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
-    private final Cache<String, StreamingChatLanguageModel> streamingModelCache = CacheBuilder.newBuilder()
+    private final Cache<String, StreamingChatModel> streamingModelCache = CacheBuilder.newBuilder()
             .maximumSize(50)
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
     /**
-     * 根据请求参数动态创建 ChatLanguageModel（带缓存）
+     * 根据请求参数动态创建 ChatModel（带缓存）
      */
-    public ChatLanguageModel createChatModel(ChatRequest request, AiType aiType) {
+    public ChatModel createChatModel(ChatRequest request, AiType aiType) {
         String cacheKey = buildCacheKey(request, aiType);
         return chatModelCache.getIfPresent(cacheKey) != null
                 ? chatModelCache.getIfPresent(cacheKey)
                 : chatModelCache.asMap().computeIfAbsent(cacheKey, key -> {
-            log.debug("创建新的 ChatLanguageModel: {}", key);
+            log.debug("创建新的 ChatModel: {}", key);
             return buildChatModel(request, getConfig(aiType));
         });
     }
 
     /**
-     * 根据请求参数动态创建 StreamingChatLanguageModel（带缓存）
+     * 根据请求参数动态创建 StreamingChatModel（带缓存）
      */
-    public StreamingChatLanguageModel createStreamingChatModel(ChatRequest request, AiType aiType) {
+    public StreamingChatModel createStreamingChatModel(ChatRequest request, AiType aiType) {
         String cacheKey = buildCacheKey(request, aiType);
         return streamingModelCache.getIfPresent(cacheKey) != null
                 ? streamingModelCache.getIfPresent(cacheKey)
                 : streamingModelCache.asMap().computeIfAbsent(cacheKey, key -> {
-            log.debug("创建新的 StreamingChatLanguageModel: {}", key);
+            log.debug("创建新的 StreamingChatModel: {}", key);
             return buildStreamingModel(request, getConfig(aiType));
         });
     }
 
     /**
-     * 通用构建 ChatLanguageModel
+     * 通用构建 ChatModel
      */
-    private ChatLanguageModel buildChatModel(ChatRequest request, AbstractAiChatConfig config) {
+    private ChatModel buildChatModel(ChatRequest request, AbstractAiChatConfig config) {
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .apiKey(config.getApiKey())
                 .baseUrl(config.getApiUrl())
@@ -92,9 +92,9 @@ public class DynamicModelFactory {
     }
 
     /**
-     * 通用构建 StreamingChatLanguageModel
+     * 通用构建 StreamingChatModel
      */
-    private StreamingChatLanguageModel buildStreamingModel(ChatRequest request, AbstractAiChatConfig config) {
+    private StreamingChatModel buildStreamingModel(ChatRequest request, AbstractAiChatConfig config) {
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
                 .apiKey(config.getApiKey())
                 .baseUrl(config.getApiUrl())

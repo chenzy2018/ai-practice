@@ -1,7 +1,7 @@
 package com.czy.ai.langchain4j.register;
 
 import com.czy.ai.langchain4j.AiType;
-import com.czy.ai.langchain4j.ChatLanguageModelFactory;
+import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.config.WebullChatConfig;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -21,7 +21,7 @@ public class WebullRegister implements InitializingBean {
     private WebullChatConfig webullChatConfig;
 
     @Autowired
-    private ChatLanguageModelFactory chatLanguageModelFactory;
+    private ChatModelFactory chatModelFactory;
 
     /**
      * 注入通义千问对话模型
@@ -35,8 +35,8 @@ public class WebullRegister implements InitializingBean {
                 .temperature(webullChatConfig.getTemperature())
                 .maxTokens(webullChatConfig.getMaxTokens())
                 .build();
-        chatLanguageModelFactory.registerAiChatProvider(AiType.WEBULL, build);
-        // OpenAiChatModel 同时实现了 StreamingChatLanguageModel 接口
+        chatModelFactory.registerChatModel(AiType.WEBULL, build);
+        // 注册流式模型
         OpenAiStreamingChatModel buildStreaming = OpenAiStreamingChatModel.builder()
                 .apiKey(webullChatConfig.getApiKey())
                 .baseUrl(webullChatConfig.getApiUrl())
@@ -44,6 +44,6 @@ public class WebullRegister implements InitializingBean {
                 .temperature(webullChatConfig.getTemperature())
                 .maxTokens(webullChatConfig.getMaxTokens())
                 .build();
-        chatLanguageModelFactory.registerStreamingChatProvider(AiType.WEBULL, buildStreaming);
+        chatModelFactory.registerStreamingChatModel(AiType.WEBULL, buildStreaming);
     }
 }

@@ -4,7 +4,7 @@ import com.czy.ai.common.dto.Result;
 import com.czy.ai.common.session.SessionContext;
 import com.czy.ai.common.session.SessionManage;
 import com.czy.ai.langchain4j.AiType;
-import com.czy.ai.langchain4j.ChatLanguageModelFactory;
+import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.IAiChatProvider;
 import com.czy.ai.langchain4j.chatrequest.ChatRequest;
 import com.czy.ai.langchain4j.util.MessageConverter;
@@ -12,8 +12,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -28,7 +28,7 @@ import java.util.List;
 public abstract class AbstractAiChatProvider<T extends ChatRequest> implements IAiChatProvider<T> {
 
     @Autowired
-    private ChatLanguageModelFactory chatLanguageModelFactory;
+    private ChatModelFactory chatModelFactory;
 
     @Autowired
     private DynamicModelFactory dynamicModelFactory;
@@ -54,7 +54,7 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
      */
     @Override
     public Result<String> chat(String content) {
-        String answer = chatLanguageModelFactory.getChatModel(supportAiModel()).generate(content);
+        String answer = chatModelFactory.getChatModel(supportAiModel()).chat(content);
         return Result.success(answer);
     }
 
@@ -72,17 +72,17 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
         sessionManage.updateLastActiveTime(chatRequest.getSessionId());
 
         // 2. 动态创建模型（带缓存）
-        ChatLanguageModel model = dynamicModelFactory.createChatModel(chatRequest, supportAiModel());
+        ChatModel model = dynamicModelFactory.createChatModel(chatRequest, supportAiModel());
 
         // 3. 使用 MessageConverter 构建消息列表
         List<ChatMessage> messages = MessageConverter.buildMessageList(
                 session.getMessages(), chatRequest.getQuestion(), chatRequest.getSystemPrompt());
 
         // 4. 调用模型生成响应
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // 5. 更新会话
-        String content = response.content().text();
+        String content = response.aiMessage().text();
         session.addAssistantMessage(content);
 
         log.debug("AI响应: aiType={}, userId={}", supportAiModel(), chatRequest.getUserId());

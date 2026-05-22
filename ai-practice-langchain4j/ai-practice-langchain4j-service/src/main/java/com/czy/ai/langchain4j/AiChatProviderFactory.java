@@ -7,9 +7,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * AI 聊天提供者注册中心
+ * 按 AiType 索引 IAiChatProvider 实例
+ *
  * @author chenzhenyu 2026年05月19日 上午09:49:40
  */
 @Component
@@ -19,14 +22,14 @@ public class AiChatProviderFactory implements InitializingBean {
     @Autowired
     private List<IAiChatProvider> aiChatProviders;
 
-    private static final Map<AiType, IAiChatProvider> AI_CHAT_PROVIDER_MAP = Maps.newHashMap();
+    private final ConcurrentHashMap<AiType, IAiChatProvider> providerMap = new ConcurrentHashMap<>();
 
     public IAiChatProvider getAiChatProvider(AiType aiType) {
-        return AI_CHAT_PROVIDER_MAP.get(aiType);
+        return providerMap.get(aiType);
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        aiChatProviders.forEach(action -> AI_CHAT_PROVIDER_MAP.put(action.supportAiModel(), action));
+        aiChatProviders.forEach(action -> providerMap.put(action.supportAiModel(), action));
     }
 }

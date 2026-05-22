@@ -5,14 +5,13 @@ import com.czy.ai.common.session.SessionContext;
 import com.czy.ai.common.session.SessionManage;
 import com.czy.ai.langchain4j.AiChatProviderFactory;
 import com.czy.ai.langchain4j.AiType;
-import com.czy.ai.langchain4j.ChatLanguageModelFactory;
+import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.chatrequest.LangChainChatRequest;
 import com.czy.ai.langchain4j.util.MessageConverter;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -37,7 +36,7 @@ public class ChatServiceImpl implements ChatService {
     private AiChatProviderFactory aiChatProviderFactory;
 
     @Autowired
-    private ChatLanguageModelFactory chatLanguageModelFactory;
+    private ChatModelFactory chatModelFactory;
 
     @Autowired
     private SessionManage sessionManage;
@@ -92,7 +91,7 @@ public class ChatServiceImpl implements ChatService {
             sessionManage.updateLastActiveTime(finalSessionId);
 
             // 2. 获取流式模型
-            StreamingChatLanguageModel model = chatLanguageModelFactory.getStreamingChatLanguageModel(aiType);
+            StreamingChatModel model = chatModelFactory.getStreamingChatModel(aiType);
             if (model == null) {
                 callback.onError(new IllegalStateException("未注册该 AI 类型的流式模型: " + aiType));
                 return;
@@ -103,17 +102,17 @@ public class ChatServiceImpl implements ChatService {
                     session.getMessages(), question, systemPrompt);
 
             // 4. 流式调用
-            model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+            model.chat(messages, new StreamingChatResponseHandler() {
                 @Override
-                public void onNext(String token) {
-                    callback.onToken(token);
+                public void onPartialResponse(String partialResponse) {
+                    callback.onToken(partialResponse);
                 }
 
                 @Override
-                public void onComplete(Response<AiMessage> response) {
+                public void onCompleteResponse(ChatResponse completeResponse) {
                     try {
-                        // 防御性检查：LangChain4j 0.32.0 bug，API 调用失败时 response 可能为 null
-                        if (response == null || response.content() == null) {
+                        // 防御性检查：LangChain4j bug，API 调用失败时 response 可能为 null
+                        if (completeResponse == null || completeResponse.aiMessage() == null) {
                             log.warn("流式对话收到空响应 - sessionId: {}, aiType: {}", finalSessionId, aiType);
                             Map<String, Object> metadata = new HashMap<>();
                             metadata.put("sessionId", finalSessionId);
@@ -123,7 +122,7 @@ public class ChatServiceImpl implements ChatService {
                             return;
                         }
 
-                        String content = response.content().text();
+                        String content = completeResponse.aiMessage().text();
                         session.addUserMessage(question);
                         session.addAssistantMessage(content);
 

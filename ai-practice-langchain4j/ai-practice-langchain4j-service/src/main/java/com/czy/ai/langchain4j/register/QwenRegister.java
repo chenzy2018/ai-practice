@@ -1,7 +1,7 @@
 package com.czy.ai.langchain4j.register;
 
 import com.czy.ai.langchain4j.AiType;
-import com.czy.ai.langchain4j.ChatLanguageModelFactory;
+import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.config.QwenChatConfig;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -21,7 +21,7 @@ public class QwenRegister implements InitializingBean {
     private QwenChatConfig qwenChatConfig;
 
     @Autowired
-    private ChatLanguageModelFactory chatLanguageModelFactory;
+    private ChatModelFactory chatModelFactory;
 
     /**
      * 注入对话模型和流式模型
@@ -35,7 +35,7 @@ public class QwenRegister implements InitializingBean {
                 .temperature(qwenChatConfig.getTemperature())
                 .maxTokens(qwenChatConfig.getMaxTokens())
                 .build();
-        chatLanguageModelFactory.registerAiChatProvider(AiType.QWEN, chatModel);
+        chatModelFactory.registerChatModel(AiType.QWEN, chatModel);
 
         OpenAiStreamingChatModel streamingModel = OpenAiStreamingChatModel.builder()
                 .apiKey(qwenChatConfig.getApiKey())
@@ -44,6 +44,6 @@ public class QwenRegister implements InitializingBean {
                 .temperature(qwenChatConfig.getTemperature())
                 .maxTokens(qwenChatConfig.getMaxTokens())
                 .build();
-        chatLanguageModelFactory.registerStreamingChatProvider(AiType.QWEN, streamingModel);
+        chatModelFactory.registerStreamingChatModel(AiType.QWEN, streamingModel);
     }
 }
