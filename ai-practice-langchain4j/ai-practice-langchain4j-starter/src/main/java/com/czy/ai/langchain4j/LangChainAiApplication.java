@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
                 "com.czy.ai.web"
         })
 @EnableConfigurationProperties
+@EnableScheduling
 public class LangChainAiApplication {
 
     public static void main(String[] args) {

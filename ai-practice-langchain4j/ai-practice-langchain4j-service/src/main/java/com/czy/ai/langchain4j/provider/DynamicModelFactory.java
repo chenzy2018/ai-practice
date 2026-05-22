@@ -2,8 +2,11 @@ package com.czy.ai.langchain4j.provider;
 
 import com.czy.ai.langchain4j.AiType;
 import com.czy.ai.langchain4j.chatrequest.ChatRequest;
+import com.czy.ai.langchain4j.config.AbstractAiChatConfig;
 import com.czy.ai.langchain4j.config.QwenChatConfig;
 import com.czy.ai.langchain4j.config.WebullChatConfig;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -13,12 +16,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 动态模型工厂 - 根据请求参数动态创建 ChatLanguageModel
- * 支持缓存复用，避免重复创建
+ * 支持缓存复用（Guava Cache，1小时过期，最大50实例），避免重复创建
  * 支持多种 AI 类型（QWEN、WEBULL）
  *
  * @author chenzhenyu
@@ -33,136 +35,99 @@ public class DynamicModelFactory {
     @Autowired
     private QwenChatConfig qwenChatConfig;
 
-    // 使用 ConcurrentHashMap 作为缓存
-    private final Map<String, ChatLanguageModel> chatModelCache = new ConcurrentHashMap<>();
-    private final Map<String, StreamingChatLanguageModel> streamingModelCache = new ConcurrentHashMap<>();
+    // Guava Cache: 1小时未访问过期，最大缓存50个实例
+    private final Cache<String, ChatLanguageModel> chatModelCache = CacheBuilder.newBuilder()
+            .maximumSize(50)
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .build();
+
+    private final Cache<String, StreamingChatLanguageModel> streamingModelCache = CacheBuilder.newBuilder()
+            .maximumSize(50)
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .build();
 
     /**
-     * 根据请求参数动态创建 ChatLanguageModel
+     * 根据请求参数动态创建 ChatLanguageModel（带缓存）
      */
     public ChatLanguageModel createChatModel(ChatRequest request, AiType aiType) {
         String cacheKey = buildCacheKey(request, aiType);
-        
-        return chatModelCache.computeIfAbsent(cacheKey, key -> {
+        return chatModelCache.getIfPresent(cacheKey) != null
+                ? chatModelCache.getIfPresent(cacheKey)
+                : chatModelCache.asMap().computeIfAbsent(cacheKey, key -> {
             log.debug("创建新的 ChatLanguageModel: {}", key);
-            
-            // 根据 AI 类型获取配置
-            if (AiType.QWEN.equals(aiType)) {
-                return createQwenChatModel(request);
-            } else {
-                return createWebullChatModel(request);
-            }
+            return buildChatModel(request, getConfig(aiType));
         });
     }
 
     /**
-     * 根据请求参数动态创建 StreamingChatLanguageModel
+     * 根据请求参数动态创建 StreamingChatLanguageModel（带缓存）
      */
     public StreamingChatLanguageModel createStreamingChatModel(ChatRequest request, AiType aiType) {
         String cacheKey = buildCacheKey(request, aiType);
-        
-        return streamingModelCache.computeIfAbsent(cacheKey, key -> {
+        return streamingModelCache.getIfPresent(cacheKey) != null
+                ? streamingModelCache.getIfPresent(cacheKey)
+                : streamingModelCache.asMap().computeIfAbsent(cacheKey, key -> {
             log.debug("创建新的 StreamingChatLanguageModel: {}", key);
-            
-            // 根据 AI 类型获取配置
-            if (AiType.QWEN.equals(aiType)) {
-                return createQwenStreamingModel(request);
-            } else {
-                return createWebullStreamingModel(request);
-            }
+            return buildStreamingModel(request, getConfig(aiType));
         });
     }
 
     /**
-     * 创建 Qwen ChatLanguageModel
+     * 通用构建 ChatLanguageModel
      */
-    private ChatLanguageModel createQwenChatModel(ChatRequest request) {
+    private ChatLanguageModel buildChatModel(ChatRequest request, AbstractAiChatConfig config) {
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
-                .apiKey(qwenChatConfig.getApiKey())
-                .baseUrl(qwenChatConfig.getApiUrl())
-                .modelName(getModel(request, qwenChatConfig.getModel()))
-                .temperature(getTemperature(request, qwenChatConfig.getTemperature()))
-                .maxTokens(getMaxTokens(request, qwenChatConfig.getMaxTokens()));
+                .apiKey(config.getApiKey())
+                .baseUrl(config.getApiUrl())
+                .modelName(getModel(request, config.getModel()))
+                .temperature(getTemperature(request, config.getTemperature()))
+                .maxTokens(getMaxTokens(request, config.getMaxTokens()));
 
-        if (request.getTopP() != null) {
-            builder.topP(request.getTopP());
-        } else if (qwenChatConfig.getTopP() != null) {
-            builder.topP(qwenChatConfig.getTopP());
+        Double topP = getTopP(request, config.getTopP());
+        if (topP != null) {
+            builder.topP(topP);
         }
 
         return builder.build();
     }
 
     /**
-     * 创建 Qwen StreamingChatLanguageModel
+     * 通用构建 StreamingChatLanguageModel
      */
-    private StreamingChatLanguageModel createQwenStreamingModel(ChatRequest request) {
+    private StreamingChatLanguageModel buildStreamingModel(ChatRequest request, AbstractAiChatConfig config) {
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
-                .apiKey(qwenChatConfig.getApiKey())
-                .baseUrl(qwenChatConfig.getApiUrl())
-                .modelName(getModel(request, qwenChatConfig.getModel()))
-                .temperature(getTemperature(request, qwenChatConfig.getTemperature()))
-                .maxTokens(getMaxTokens(request, qwenChatConfig.getMaxTokens()));
+                .apiKey(config.getApiKey())
+                .baseUrl(config.getApiUrl())
+                .modelName(getModel(request, config.getModel()))
+                .temperature(getTemperature(request, config.getTemperature()))
+                .maxTokens(getMaxTokens(request, config.getMaxTokens()));
 
-        if (request.getTopP() != null) {
-            builder.topP(request.getTopP());
-        } else if (qwenChatConfig.getTopP() != null) {
-            builder.topP(qwenChatConfig.getTopP());
+        Double topP = getTopP(request, config.getTopP());
+        if (topP != null) {
+            builder.topP(topP);
         }
 
         return builder.build();
     }
 
     /**
-     * 创建 Webull ChatLanguageModel
+     * 根据 AiType 获取对应配置
      */
-    private ChatLanguageModel createWebullChatModel(ChatRequest request) {
-        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
-                .apiKey(webullChatConfig.getApiKey())
-                .baseUrl(webullChatConfig.getApiUrl())
-                .modelName(getModel(request, webullChatConfig.getModel()))
-                .temperature(getTemperature(request, webullChatConfig.getTemperature()))
-                .maxTokens(getMaxTokens(request, webullChatConfig.getMaxTokens()));
-
-        if (request.getTopP() != null) {
-            builder.topP(request.getTopP());
-        } else if (webullChatConfig.getTopP() != null) {
-            builder.topP(webullChatConfig.getTopP());
-        }
-
-        return builder.build();
+    private AbstractAiChatConfig getConfig(AiType aiType) {
+        return AiType.QWEN.equals(aiType) ? qwenChatConfig : webullChatConfig;
     }
 
     /**
-     * 创建 Webull StreamingChatLanguageModel
-     */
-    private StreamingChatLanguageModel createWebullStreamingModel(ChatRequest request) {
-        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
-                .apiKey(webullChatConfig.getApiKey())
-                .baseUrl(webullChatConfig.getApiUrl())
-                .modelName(getModel(request, webullChatConfig.getModel()))
-                .temperature(getTemperature(request, webullChatConfig.getTemperature()))
-                .maxTokens(getMaxTokens(request, webullChatConfig.getMaxTokens()));
-
-        if (request.getTopP() != null) {
-            builder.topP(request.getTopP());
-        } else if (webullChatConfig.getTopP() != null) {
-            builder.topP(webullChatConfig.getTopP());
-        }
-
-        return builder.build();
-    }
-
-    /**
-     * 构建缓存键（包含 AI 类型）
+     * 构建缓存键（包含 AI 类型和模型参数）
      */
     private String buildCacheKey(ChatRequest request, AiType aiType) {
+        AbstractAiChatConfig config = getConfig(aiType);
         return String.format("%s_%s_%s_%s_%s",
                 aiType.name(),
-                getModel(request, getDefaultModel(aiType)),
-                getTemperature(request, getDefaultTemperature(aiType)),
-                getMaxTokens(request, getDefaultMaxTokens(aiType)),
-                getTopP(request, getDefaultTopP(aiType))
+                getModel(request, config.getModel()),
+                getTemperature(request, config.getTemperature()),
+                getMaxTokens(request, config.getMaxTokens()),
+                getTopP(request, config.getTopP())
         );
     }
 
@@ -179,23 +144,6 @@ public class DynamicModelFactory {
     }
 
     private Double getTopP(ChatRequest request, Double defaultTopP) {
-        return request.getTopP() != null ? request.getTopP() : defaultTopP;
-    }
-
-    private String getDefaultModel(AiType aiType) {
-        return AiType.QWEN.equals(aiType) ? qwenChatConfig.getModel() : webullChatConfig.getModel();
-    }
-
-    private Double getDefaultTemperature(AiType aiType) {
-        return AiType.QWEN.equals(aiType) ? qwenChatConfig.getTemperature() : webullChatConfig.getTemperature();
-    }
-
-    private Integer getDefaultMaxTokens(AiType aiType) {
-        return AiType.QWEN.equals(aiType) ? qwenChatConfig.getMaxTokens() : webullChatConfig.getMaxTokens();
-    }
-
-    private Double getDefaultTopP(AiType aiType) {
-        Double topP = AiType.QWEN.equals(aiType) ? qwenChatConfig.getTopP() : webullChatConfig.getTopP();
-        return topP != null ? topP : 1.0;
+        return request.getTopP() != null ? request.getTopP() : (defaultTopP != null ? defaultTopP : null);
     }
 }

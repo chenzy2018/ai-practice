@@ -10,3 +10,10 @@ logging:
 
 knife4j:
   enable: false
+
+ai:
+  chat:
+    webull:
+      api-key: ${WEBULL_API_KEY:}
+    qwen:
+      api-key: ${QWEN_API_KEY:}

@@ -16,8 +16,8 @@ ai:
     max-messages: 20
   chat:
     webull:
-      api-key: ${QWEN_API_KEY:bf2e8006-5db7-4c05-931c-4a4445800bef}
-      api-url: https://pre-office.webullbroker.com/api/oa-ai/open
+      api-key: ${WEBULL_API_KEY}
+      api-url: ${WEBULL_API_URL:https://pre-office.webullbroker.com/api/oa-ai/open}
       stream: true
       model: us.deepseek.r1-v1:0
       temperature: 0.7
@@ -26,13 +26,8 @@ ai:
       thinking_type: enabled #  关闭是disable
       thinking_budget_tokens: 16000
     qwen:
-      api-key: ${QWEN_API_KEY:sk-33b96ae17cba4c928a8bf7bcab5b5b08}
-      api-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
-      http:
-        connect-timeout: 30
-        read-timeout: 60
-        write-timeout: 60
-        stream-read-timeout: 300
+      api-key: ${QWEN_API_KEY}
+      api-url: ${QWEN_API_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
 #  langchain4j:
 #    api-key: ${QWEN_API_KEY:sk-33b96ae17cba4c928a8bf7bcab5b5b08}
 #    model-name: qwen-turbo

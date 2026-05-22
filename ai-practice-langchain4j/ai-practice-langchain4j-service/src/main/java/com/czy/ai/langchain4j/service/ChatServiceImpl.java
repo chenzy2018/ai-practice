@@ -1,0 +1,157 @@
+package com.czy.ai.langchain4j.service;
+
+import com.czy.ai.common.dto.Result;
+import com.czy.ai.common.session.SessionContext;
+import com.czy.ai.common.session.SessionManage;
+import com.czy.ai.langchain4j.AiChatProviderFactory;
+import com.czy.ai.langchain4j.AiType;
+import com.czy.ai.langchain4j.ChatLanguageModelFactory;
+import com.czy.ai.langchain4j.chatrequest.LangChainChatRequest;
+import com.czy.ai.langchain4j.util.MessageConverter;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
+
+/**
+ * 聊天服务实现
+ * 封装会话管理、消息构建、模型选择、流式回调等业务逻辑
+ *
+ * @author chenzhenyu
+ */
+@Slf4j
+@Service
+public class ChatServiceImpl implements ChatService {
+
+    @Autowired
+    private AiChatProviderFactory aiChatProviderFactory;
+
+    @Autowired
+    private ChatLanguageModelFactory chatLanguageModelFactory;
+
+    @Autowired
+    private SessionManage sessionManage;
+
+    @Autowired
+    @Qualifier("aiTaskExecutor")
+    private Executor aiTaskExecutor;
+
+    @Override
+    public Result<String> chat(String question, String aiType) {
+        AiType type = AiType.safeValueOf(aiType);
+        return aiChatProviderFactory.getAiChatProvider(type).chat(question);
+    }
+
+    @Override
+    public Result<String> customChat(LangChainChatRequest chatRequest) {
+        AiType type = AiType.safeValueOf(chatRequest.getAiType());
+        return aiChatProviderFactory.getAiChatProvider(type).customChat(chatRequest);
+    }
+
+    @Override
+    public void streamChat(String question, String aiType, String sessionId, String userId,
+                           String systemPrompt, StreamCallback callback) {
+        AiType type = AiType.safeValueOf(aiType);
+        String finalUserId = (userId != null && !userId.isEmpty()) ? userId : "anonymous";
+
+        aiTaskExecutor.execute(() -> doStream(question, type, sessionId, finalUserId, systemPrompt, callback));
+    }
+
+    @Override
+    public void streamCustomChat(LangChainChatRequest chatRequest, StreamCallback callback) {
+        AiType type = AiType.safeValueOf(chatRequest.getAiType());
+        String finalUserId = (chatRequest.getUserId() != null && !chatRequest.getUserId().isEmpty())
+                ? chatRequest.getUserId() : "anonymous";
+
+        aiTaskExecutor.execute(() -> doStream(
+                chatRequest.getQuestion(), type, chatRequest.getSessionId(),
+                finalUserId, chatRequest.getSystemPrompt(), callback));
+    }
+
+    /**
+     * 流式对话核心逻辑
+     */
+    private void doStream(String question, AiType aiType, String sessionId,
+                          String userId, String systemPrompt, StreamCallback callback) {
+        try {
+            long startTime = System.currentTimeMillis();
+
+            // 1. 获取/创建会话
+            SessionContext session = sessionManage.getOrCreate(sessionId, userId, systemPrompt);
+            String finalSessionId = session.getSessionId();
+            sessionManage.updateLastActiveTime(finalSessionId);
+
+            // 2. 获取流式模型
+            StreamingChatLanguageModel model = chatLanguageModelFactory.getStreamingChatLanguageModel(aiType);
+            if (model == null) {
+                callback.onError(new IllegalStateException("未注册该 AI 类型的流式模型: " + aiType));
+                return;
+            }
+
+            // 3. 构建消息列表
+            List<ChatMessage> messages = MessageConverter.buildMessageList(
+                    session.getMessages(), question, systemPrompt);
+
+            // 4. 流式调用
+            model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+                @Override
+                public void onNext(String token) {
+                    callback.onToken(token);
+                }
+
+                @Override
+                public void onComplete(Response<AiMessage> response) {
+                    try {
+                        // 防御性检查：LangChain4j 0.32.0 bug，API 调用失败时 response 可能为 null
+                        if (response == null || response.content() == null) {
+                            log.warn("流式对话收到空响应 - sessionId: {}, aiType: {}", finalSessionId, aiType);
+                            Map<String, Object> metadata = new HashMap<>();
+                            metadata.put("sessionId", finalSessionId);
+                            metadata.put("userId", userId);
+                            metadata.put("aiType", aiType.name());
+                            callback.onComplete("", metadata);
+                            return;
+                        }
+
+                        String content = response.content().text();
+                        session.addUserMessage(question);
+                        session.addAssistantMessage(content);
+
+                        long costTime = System.currentTimeMillis() - startTime;
+                        log.debug("流式对话完成 - sessionId: {}, userId: {}, aiType: {}, 耗时: {}ms",
+                                finalSessionId, userId, aiType, costTime);
+
+                        Map<String, Object> metadata = new HashMap<>();
+                        metadata.put("sessionId", finalSessionId);
+                        metadata.put("userId", userId);
+                        metadata.put("aiType", aiType.name());
+                        metadata.put("costTime", costTime);
+
+                        callback.onComplete(content, metadata);
+                    } catch (Exception e) {
+                        callback.onError(e);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    log.error("流式对话异常 - sessionId: {}, aiType: {}", finalSessionId, aiType, error);
+                    callback.onError(error);
+                }
+            });
+        } catch (Exception e) {
+            log.error("流式对话执行异常 - aiType: {}", aiType, e);
+            callback.onError(e);
+        }
+    }
+}

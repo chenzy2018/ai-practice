@@ -1,37 +1,42 @@
 package com.czy.ai.langchain4j;
 
-import com.google.common.collect.Maps;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * ChatLanguageModel 注册中心
+ * 统一管理 ChatLanguageModel 和 StreamingChatLanguageModel 实例
+ *
  * @author chenzhenyu 2026年05月18日 下午22:17:08
  */
-@Component
+// @Deprecated
 @Slf4j
+@Component
 public class ChatLanguageModelFactory {
 
-    private static final Map<AiType, ChatLanguageModel> AI_CHAT_PROVIDER_MAP = Maps.newHashMap();
-    private static final Map<AiType, StreamingChatLanguageModel> STREAMING_CHAT_PROVIDER_MAP = Maps.newHashMap();
+    private final ConcurrentHashMap<AiType, ChatLanguageModel> chatModelMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<AiType, StreamingChatLanguageModel> streamingModelMap = new ConcurrentHashMap<>();
 
-    public ChatLanguageModel getAiChatProvider(AiType aiType) {
-        return AI_CHAT_PROVIDER_MAP.get(aiType);
+    public ChatLanguageModel getChatModel(AiType aiType) {
+        return chatModelMap.get(aiType);
     }
 
     public StreamingChatLanguageModel getStreamingChatLanguageModel(AiType aiType) {
-        return STREAMING_CHAT_PROVIDER_MAP.get(aiType);
+        return streamingModelMap.get(aiType);
     }
 
     public void registerAiChatProvider(AiType aiType, ChatLanguageModel chatLanguageModel) {
-        AI_CHAT_PROVIDER_MAP.put(aiType, chatLanguageModel);
+        chatModelMap.put(aiType, chatLanguageModel);
+        log.info("注册 ChatLanguageModel: aiType={}", aiType);
     }
 
     public void registerStreamingChatProvider(AiType aiType, StreamingChatLanguageModel streamingChatLanguageModel) {
-        STREAMING_CHAT_PROVIDER_MAP.put(aiType, streamingChatLanguageModel);
+        streamingModelMap.put(aiType, streamingChatLanguageModel);
+        log.info("注册 StreamingChatLanguageModel: aiType={}", aiType);
     }
 
 }

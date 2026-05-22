@@ -53,7 +53,7 @@ public class SessionManage {
         }
     }
 
-    @Scheduled(fixedRateString = "#{qwenConfig.session.cleanupIntervalMs}")
+    @Scheduled(fixedRateString = "${ai.session.cleanup-interval-ms:60000}")
     public void cleanupExpiredSessions() {
         long timeoutMillis = TimeUnit.SECONDS.toMillis(sessionConfig.getTimeoutSeconds());
         int[] removedCount = {0};

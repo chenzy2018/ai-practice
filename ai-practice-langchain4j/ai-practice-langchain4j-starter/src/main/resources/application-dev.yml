@@ -1,6 +1,13 @@
 logging:
   level:
-    com.czy.ai.qwen: DEBUG
+    com.czy.ai: DEBUG
 
 knife4j:
   enable: true
+
+ai:
+  chat:
+    webull:
+      api-key: ${WEBULL_API_KEY:bf2e8006-5db7-4c05-931c-4a4445800bef}
+    qwen:
+      api-key: ${QWEN_API_KEY:sk-33b96ae17cba4c928a8bf7bcab5b5b08}

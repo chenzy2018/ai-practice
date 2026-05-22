@@ -54,11 +54,13 @@ public class SessionContext {
     }
 
     public void trimMessages(int maxSize) {
-        if (messages.size() > maxSize) {
-            int removed = messages.size() - maxSize;
-            for (int i = 0; i < removed; i++) {
-                messages.remove(0);
-            }
+        if (messages.size() <= maxSize) {
+            return;
+        }
+        // 保护首条 system prompt，从第二条消息开始裁剪
+        int startIndex = !messages.isEmpty() && Message.ROLE_SYSTEM.equals(messages.get(0).getRole()) ? 1 : 0;
+        while (messages.size() > maxSize && startIndex < messages.size()) {
+            messages.remove(startIndex);
         }
     }
 }

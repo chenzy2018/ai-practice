@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
+ * LangChain4j 聊天请求实现
+ * 实现 StreamableChatRequest 接口，支持流式等特性参数
+ *
  * @author chenzhenyu 2026年05月19日 上午10:38:12
  */
 @Getter
@@ -14,7 +17,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LangChainChatRequest implements WebullChatRequest{
+public class LangChainChatRequest implements StreamableChatRequest {
 
     private String sessionId;
     private String userId;
@@ -26,6 +29,8 @@ public class LangChainChatRequest implements WebullChatRequest{
     private Double topP;
     private Integer maxTokens;
 
-    // ai 特性参数
+    /**
+     * 是否流式
+     */
     private Boolean stream;
 }

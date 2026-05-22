@@ -1,6 +1,5 @@
 package com.czy.ai.langchain4j.provider;
 
-import com.czy.ai.common.Message;
 import com.czy.ai.common.dto.Result;
 import com.czy.ai.common.session.SessionContext;
 import com.czy.ai.common.session.SessionManage;
@@ -8,6 +7,7 @@ import com.czy.ai.langchain4j.AiType;
 import com.czy.ai.langchain4j.ChatLanguageModelFactory;
 import com.czy.ai.langchain4j.IAiChatProvider;
 import com.czy.ai.langchain4j.chatrequest.ChatRequest;
+import com.czy.ai.langchain4j.util.MessageConverter;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -17,7 +17,6 @@ import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,7 +28,7 @@ import java.util.List;
 public abstract class AbstractAiChatProvider<T extends ChatRequest> implements IAiChatProvider<T> {
 
     @Autowired
-    private ChatLanguageModelFactory aiChatProviderFactory;
+    private ChatLanguageModelFactory chatLanguageModelFactory;
 
     @Autowired
     private DynamicModelFactory dynamicModelFactory;
@@ -55,7 +54,7 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
      */
     @Override
     public Result<String> chat(String content) {
-        String answer = aiChatProviderFactory.getAiChatProvider(supportAiModel()).generate(content);
+        String answer = chatLanguageModelFactory.getChatModel(supportAiModel()).generate(content);
         return Result.success(answer);
     }
 
@@ -75,16 +74,9 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
         // 2. 动态创建模型（带缓存）
         ChatLanguageModel model = dynamicModelFactory.createChatModel(chatRequest, supportAiModel());
 
-        // 3. 构建消息列表 - 将内部 Message 转换为 LangChain4j 的 ChatMessage
-        List<ChatMessage> messages = convertMessages(session.getMessages());
-
-        // 如果有系统提示，添加到消息列表开头
-        if (chatRequest.getSystemPrompt() != null && !chatRequest.getSystemPrompt().isEmpty()) {
-            messages.add(0, SystemMessage.from(chatRequest.getSystemPrompt()));
-        }
-
-        // 添加用户消息
-        messages.add(UserMessage.from(chatRequest.getQuestion()));
+        // 3. 使用 MessageConverter 构建消息列表
+        List<ChatMessage> messages = MessageConverter.buildMessageList(
+                session.getMessages(), chatRequest.getQuestion(), chatRequest.getSystemPrompt());
 
         // 4. 调用模型生成响应
         Response<AiMessage> response = model.generate(messages);
@@ -93,31 +85,8 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
         String content = response.content().text();
         session.addAssistantMessage(content);
 
-        log.debug("AI响应: {}", content);
+        log.debug("AI响应: aiType={}, userId={}", supportAiModel(), chatRequest.getUserId());
         return Result.success(content);
-    }
-
-    /**
-     * 将内部 Message 列表转换为 LangChain4j 的 ChatMessage 列表
-     */
-    private List<ChatMessage> convertMessages(List<Message> messages) {
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        for (Message message : messages) {
-            switch (message.getRole()) {
-                case Message.ROLE_USER:
-                    chatMessages.add(UserMessage.from(message.getContent()));
-                    break;
-                case Message.ROLE_ASSISTANT:
-                    chatMessages.add(AiMessage.from(message.getContent()));
-                    break;
-                case Message.ROLE_SYSTEM:
-                    chatMessages.add(SystemMessage.from(message.getContent()));
-                    break;
-                default:
-                    chatMessages.add(UserMessage.from(message.getContent()));
-            }
-        }
-        return chatMessages;
     }
 
     /**
