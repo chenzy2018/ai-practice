@@ -4,6 +4,7 @@ import com.czy.ai.langchain4j.AiType;
 import com.czy.ai.langchain4j.ChatLanguageModelFactory;
 import com.czy.ai.langchain4j.config.WebullChatConfig;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -35,5 +36,14 @@ public class WebullRegister implements InitializingBean {
                 .maxTokens(webullChatConfig.getMaxTokens())
                 .build();
         chatLanguageModelFactory.registerAiChatProvider(AiType.WEBULL, build);
+        // OpenAiChatModel 同时实现了 StreamingChatLanguageModel 接口
+        OpenAiStreamingChatModel buildStreaming = OpenAiStreamingChatModel.builder()
+                .apiKey(webullChatConfig.getApiKey())
+                .baseUrl(webullChatConfig.getApiUrl())
+                .modelName(webullChatConfig.getModel())
+                .temperature(webullChatConfig.getTemperature())
+                .maxTokens(webullChatConfig.getMaxTokens())
+                .build();
+        chatLanguageModelFactory.registerStreamingChatProvider(AiType.WEBULL, buildStreaming);
     }
 }

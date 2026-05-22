@@ -31,6 +31,21 @@
                 <artifactId>ai-practice-langchain4j-service</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- LangChain4j 依赖版本 -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+
         </dependencies>
     </dependencyManagement>
 

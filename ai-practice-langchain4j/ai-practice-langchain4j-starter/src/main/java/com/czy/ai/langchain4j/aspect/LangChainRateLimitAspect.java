@@ -1,14 +1,17 @@
-package com.czy.ai.qwen.web.aspect;
+package com.czy.ai.langchain4j.aspect;
 
-import com.czy.ai.qwen.common.dto.ChatRequest;
+import com.czy.ai.langchain4j.chatrequest.ChatRequest;
 import com.czy.ai.web.RateLimitService;
 import com.czy.ai.web.aspect.BaseRateLimitAspect;
 import jakarta.annotation.Resource;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.stereotype.Component;
 
+/**
+ * @author chenzhenyu 2026年05月21日 上午09:28:37
+ */
 @Component
-public class QwenRateLimitAspect extends BaseRateLimitAspect {
+public class LangChainRateLimitAspect  extends BaseRateLimitAspect {
 
     @Resource
     private RateLimitService rateLimitService;
@@ -28,3 +31,4 @@ public class QwenRateLimitAspect extends BaseRateLimitAspect {
         return null;
     }
 }
+
