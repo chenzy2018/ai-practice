@@ -46,6 +46,18 @@ public class LangChainChatController {
     }
 
     /**
+     * 自定义对话 - 支持完整的聊天参数配置
+     */
+    @PostMapping("/customChat")
+    @ControllerLog(desc = "langchain 自定义对话")
+    public Result<String> customChat(@RequestBody LangChainChatRequest chatRequest) {
+        if (chatRequest == null || chatRequest.getQuestion() == null) {
+            return Result.fail("请求参数不能为空");
+        }
+        return chatService.customChat(chatRequest);
+    }
+
+    /**
      * langchain流式对话
      */
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -68,18 +80,6 @@ public class LangChainChatController {
                 createSseCallback(emitter));
 
         return emitter;
-    }
-
-    /**
-     * 自定义对话 - 支持完整的聊天参数配置
-     */
-    @PostMapping("/customChat")
-    @ControllerLog(desc = "langchain 自定义对话")
-    public Result<String> customChat(@RequestBody LangChainChatRequest chatRequest) {
-        if (chatRequest == null || chatRequest.getQuestion() == null) {
-            return Result.fail("请求参数不能为空");
-        }
-        return chatService.customChat(chatRequest);
     }
 
     /**
