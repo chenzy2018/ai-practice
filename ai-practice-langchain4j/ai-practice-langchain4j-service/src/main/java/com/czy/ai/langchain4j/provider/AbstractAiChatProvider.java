@@ -1,26 +1,26 @@
 package com.czy.ai.langchain4j.provider;
 
 import com.czy.ai.common.dto.Result;
-import com.czy.ai.common.session.SessionContext;
-import com.czy.ai.common.session.SessionManage;
 import com.czy.ai.langchain4j.AiType;
 import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.IAiChatProvider;
 import com.czy.ai.langchain4j.chatrequest.ChatRequest;
-import com.czy.ai.langchain4j.util.MessageConverter;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import com.czy.ai.langchain4j.service.AiAssistant;
+import com.czy.ai.langchain4j.service.ChatMemoryManager;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.List;
+import java.util.Map;
 
 /**
- * LangChain4j 抽象类 - 使用动态模型工厂优化
+ * LangChain4j 抽象类 - 高阶 AiServices + 低阶 ChatMemory 混合模式
+ *
+ * 高阶路径（chat）：AiAssistant（AiServices 自动编排记忆 + 模型调用）
+ * 低阶路径（customChat）：ChatMemoryManager + DynamicModelFactory（动态模型参数）
  *
  * @author chenzhenyu 2026年05月18日 下午22:04:20
  */
@@ -34,7 +34,10 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
     private DynamicModelFactory dynamicModelFactory;
 
     @Autowired
-    protected SessionManage sessionManage;
+    protected ChatMemoryManager chatMemoryManager;
+
+    @Autowired
+    private Map<AiType, AiAssistant> aiAssistantMap;
 
     /**
      * 获取支持的 AI 类型
@@ -50,40 +53,46 @@ public abstract class AbstractAiChatProvider<T extends ChatRequest> implements I
     protected abstract AiType supportAiModelImpl();
 
     /**
-     * 简单对话 - 使用已注册的模型
+     * 简单对话 - 使用 AiAssistant 高阶 API
+     * AiServices 自动编排：UserMessage → ChatModel → AiMessage → ChatMemory
      */
     @Override
     public Result<String> chat(String content) {
+        AiAssistant assistant = aiAssistantMap.get(supportAiModel());
+        if (assistant != null) {
+            // 使用默认 sessionId = "default"，无记忆
+            String answer = assistant.chat("default", content);
+            return Result.success(answer);
+        }
+        // 降级：直接使用 ChatModel
         String answer = chatModelFactory.getChatModel(supportAiModel()).chat(content);
         return Result.success(answer);
     }
 
     /**
-     * 自定义对话 - 使用动态创建的模型
+     * 自定义对话 - 低阶 API（动态模型参数 + ChatMemory）
+     * 需要动态模型参数，无法使用 AiServices 的固定模型绑定
      */
     @Override
     public Result<String> customChat(T chatRequest) {
-        // 1. 获取会话上下文
-        SessionContext session = sessionManage.getOrCreate(
+        // 1. 获取/创建 ChatMemory（自动处理 SystemMessage + 消息淘汰）
+        ChatMemory chatMemory = chatMemoryManager.getOrCreate(
                 chatRequest.getSessionId(),
                 chatRequest.getUserId(),
-                chatRequest.getSystemPrompt()
-        );
-        sessionManage.updateLastActiveTime(chatRequest.getSessionId());
+                chatRequest.getSystemPrompt());
 
-        // 2. 动态创建模型（带缓存）
+        // 2. 添加用户消息到 ChatMemory
+        chatMemory.add(UserMessage.from(chatRequest.getQuestion()));
+
+        // 3. 动态创建模型（带缓存）
         ChatModel model = dynamicModelFactory.createChatModel(chatRequest, supportAiModel());
 
-        // 3. 使用 MessageConverter 构建消息列表
-        List<ChatMessage> messages = MessageConverter.buildMessageList(
-                session.getMessages(), chatRequest.getQuestion(), chatRequest.getSystemPrompt());
+        // 4. 使用 ChatMemory 中的所有消息调用模型
+        ChatResponse response = model.chat(chatMemory.messages());
 
-        // 4. 调用模型生成响应
-        ChatResponse response = model.chat(messages);
-
-        // 5. 更新会话
+        // 5. 将 AI 响应加入 ChatMemory
         String content = response.aiMessage().text();
-        session.addAssistantMessage(content);
+        chatMemory.add(response.aiMessage());
 
         log.debug("AI响应: aiType={}, userId={}", supportAiModel(), chatRequest.getUserId());
         return Result.success(content);

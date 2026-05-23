@@ -157,6 +157,140 @@ public interface StreamingChatResponseHandler {
 - 新增 `onPartialThinking`（支持思维链推理模型，如 DeepSeek-R1）
 - 新增 `onPartialToolCall` / `onCompleteToolCall`（支持流式工具调用）
 
+## 七、ChatMemory 原生对话记忆集成
+
+### 背景与动机
+
+LangChain4j 1.0.1 提供原生 `ChatMemory` 能力，替代了本项目的自定义会话管理方案：
+
+| 对比维度 | 自定义方案（已替换） | ChatMemory 原生方案 |
+|----------|---------------------|-------------------|
+| 消息存储 | `Message` DTO + `CopyOnWriteArrayList` | `ChatMemory` 直接存储 `ChatMessage` |
+| 消息转换 | `MessageConverter` 手动转换 Message↔ChatMessage | 无需转换，直接使用 ChatMessage |
+| SystemMessage | 手动初始化 + trimMessages 保护逻辑 | ChatMemory 自动处理：唯一、保留、去重 |
+| 消息淘汰 | `SessionContext.trimMessages()` 手动裁剪 | `MessageWindowChatMemory` 滑动窗口自动淘汰 |
+| 持久化 | 无 | `ChatMemoryStore` 接口可插拔（Redis/DB） |
+| 工具消息 | 未处理 | 自动淘汰孤立 ToolExecutionResultMessage |
+
+### 架构变更
+
+```
+重构前：
+  ChatRequest → SessionManage → SessionContext(Message) → MessageConverter → ChatMessage → Model
+
+重构后：
+  ChatRequest → ChatMemoryManager → ChatMemory(ChatMessage) → Model
+```
+
+### 涉及文件
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `ChatMemoryManager.java` | 新增 | 替代 SessionManage，管理 ChatMemory 实例 + 过期清理 |
+| `AbstractAiChatProvider.java` | 修改 | SessionManage + MessageConverter → ChatMemoryManager + ChatMemory |
+| `ChatServiceImpl.java` | 修改 | SessionManage + MessageConverter → ChatMemoryManager + ChatMemory |
+| `MessageConverter.java` | 删除 | ChatMemory 直接存储 ChatMessage，无需转换 |
+| `SessionManage.java` | 保留 | qwen 模块仍在使用 |
+| `SessionContext.java` | 保留 | qwen 模块仍在使用 |
+| `Message.java` | 保留 | qwen 模块仍在使用 |
+
+### 核心代码示例
+
+```java
+// 创建 ChatMemory（自动处理 SystemMessage）
+ChatMemory chatMemory = chatMemoryManager.getOrCreate(sessionId, userId, systemPrompt);
+
+// 添加用户消息
+chatMemory.add(UserMessage.from(question));
+
+// 使用 ChatMemory 中的所有消息调用模型
+ChatResponse response = model.chat(chatMemory.messages());
+
+// 将 AI 响应加入 ChatMemory（自动处理淘汰）
+chatMemory.add(response.aiMessage());
+```
+
+### ChatMemory 扩展能力
+
+- **MessageWindowChatMemory**：按消息数量滑动窗口（当前使用，maxMessages 由 `ai.session.max-messages` 配置）
+- **TokenWindowChatMemory**：按 Token 数量滑动窗口（更精确，需 Tokenizer）
+- **ChatMemoryStore**：持久化接口，可接入 Redis/DB，实现会话跨重启恢复
+
+```java
+// 未来持久化扩展示例
+ChatMemory chatMemory = MessageWindowChatMemory.builder()
+    .id(sessionId)
+    .maxMessages(sessionConfig.getMaxMessages())
+    .chatMemoryStore(new RedisChatMemoryStore())  // 可插拔
+    .build();
+```
+
+## 八、AiServices + ChatMemoryProvider + @MemoryId 高阶 API 集成
+
+### 四大核心概念
+
+| 概念 | 1.0.1 类/注解 | 作用 |
+|------|--------------|------|
+| ChatMemory | `dev.langchain4j.memory.ChatMemory` | 对话记忆容器，自动淘汰 + SystemMessage 保护 |
+| @MemoryId | `dev.langchain4j.service.MemoryId` | 方法参数注解，标识会话 ID，AiServices 自动路由到对应 ChatMemory |
+| ChatMemoryProvider | `dev.langchain4j.memory.chat.ChatMemoryProvider` | 多用户记忆工厂，按 memoryId 创建/获取 ChatMemory |
+| AiServices | `dev.langchain4j.service.AiServices` | 声明式 AI 服务，自动编排记忆 + 模型调用 + 消息管理 |
+
+### 高阶 vs 低阶 API 选择
+
+| 场景 | API 选择 | 原因 |
+|------|---------|------|
+| 简单对话（默认模型+记忆） | **AiAssistant（高阶）** | AiServices 自动编排，一行代码搞定 |
+| 自定义对话（动态模型参数） | **ChatMemory + ChatModel（低阶）** | 需动态创建模型，AiServices 固定绑定不支持 |
+| 流式对话（SSE） | **ChatMemory + StreamingChatModel（低阶）** | SSE 需要 SseEmitter 精确控制，AiServices 不支持 |
+
+### AiAssistant 接口定义
+
+```java
+public interface AiAssistant {
+    /**
+     * 带记忆的对话
+     * @MemoryId → ChatMemoryProvider.get(memoryId) → 获取/创建 ChatMemory
+     * @UserMessage → 自动添加 UserMessage 到 ChatMemory
+     * AiServices 自动：调用 ChatModel → 添加 AiMessage 到 ChatMemory
+     */
+    String chat(@MemoryId String memoryId, @UserMessage String userMessage);
+}
+```
+
+### AiServices 构建配置
+
+```java
+AiAssistant assistant = AiServices.builder(AiAssistant.class)
+    .chatModel(chatModel)                              // 固定模型
+    .chatMemoryProvider(chatMemoryManager)              // ChatMemoryProvider（即 ChatMemoryManager）
+    .systemMessageProvider(memoryId ->                  // 动态系统提示
+        chatMemoryManager.getSystemPrompt(memoryId))
+    .build();
+```
+
+### 自动编排流程
+
+```
+assistant.chat("session-123", "你好")
+    │
+    ├─ 1. @MemoryId("session-123") → chatMemoryProvider.get("session-123")
+    ├─ 2. @UserMessage("你好")     → chatMemory.add(UserMessage.from("你好"))
+    ├─ 3. systemMessageProvider    → 自动注入 SystemMessage
+    ├─ 4. chatModel.chat(chatMemory.messages())
+    ├─ 5. chatMemory.add(aiMessage)
+    └─ 6. return aiMessage.text()
+```
+
+### 涉及文件
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `ChatMemoryManager.java` | 修改 | 实现 `ChatMemoryProvider` 接口，支持 `get(Object memoryId)` 和 `getSystemPrompt()` |
+| `AiAssistant.java` | 新增 | 声明式 AI 对话接口，使用 @MemoryId + @UserMessage |
+| `AiAssistantConfiguration.java` | 新增 | 为每个 AiType 构建 AiAssistant Bean |
+| `AbstractAiChatProvider.java` | 修改 | `chat()` 使用 AiAssistant 高阶 API，`customChat()` 保留低阶 API |
+
 ## 复杂提示工程 @StructuredPrompt
 组合多变量生成专业提示词
 ```java

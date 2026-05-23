@@ -1,14 +1,12 @@
 package com.czy.ai.langchain4j.service;
 
 import com.czy.ai.common.dto.Result;
-import com.czy.ai.common.session.SessionContext;
-import com.czy.ai.common.session.SessionManage;
 import com.czy.ai.langchain4j.AiChatProviderFactory;
 import com.czy.ai.langchain4j.AiType;
 import com.czy.ai.langchain4j.ChatModelFactory;
 import com.czy.ai.langchain4j.chatrequest.LangChainChatRequest;
-import com.czy.ai.langchain4j.util.MessageConverter;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -18,13 +16,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
 /**
  * 聊天服务实现
- * 封装会话管理、消息构建、模型选择、流式回调等业务逻辑
+ * 封装 ChatMemory 原生记忆管理、模型选择、流式回调等业务逻辑
  *
  * @author chenzhenyu
  */
@@ -39,7 +36,7 @@ public class ChatServiceImpl implements ChatService {
     private ChatModelFactory chatModelFactory;
 
     @Autowired
-    private SessionManage sessionManage;
+    private ChatMemoryManager chatMemoryManager;
 
     @Autowired
     @Qualifier("aiTaskExecutor")
@@ -85,24 +82,22 @@ public class ChatServiceImpl implements ChatService {
         try {
             long startTime = System.currentTimeMillis();
 
-            // 1. 获取/创建会话
-            SessionContext session = sessionManage.getOrCreate(sessionId, userId, systemPrompt);
-            String finalSessionId = session.getSessionId();
-            sessionManage.updateLastActiveTime(finalSessionId);
+            // 1. 获取/创建 ChatMemory（自动处理 SystemMessage + 消息淘汰）
+            ChatMemory chatMemory = chatMemoryManager.getOrCreate(sessionId, userId, systemPrompt);
+            String finalSessionId = sessionId;
 
-            // 2. 获取流式模型
+            // 2. 添加用户消息到 ChatMemory
+            chatMemory.add(UserMessage.from(question));
+
+            // 3. 获取流式模型
             StreamingChatModel model = chatModelFactory.getStreamingChatModel(aiType);
             if (model == null) {
                 callback.onError(new IllegalStateException("未注册该 AI 类型的流式模型: " + aiType));
                 return;
             }
 
-            // 3. 构建消息列表
-            List<ChatMessage> messages = MessageConverter.buildMessageList(
-                    session.getMessages(), question, systemPrompt);
-
-            // 4. 流式调用
-            model.chat(messages, new StreamingChatResponseHandler() {
+            // 4. 使用 ChatMemory 中的所有消息进行流式调用
+            model.chat(chatMemory.messages(), new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
                     callback.onToken(partialResponse);
@@ -122,9 +117,9 @@ public class ChatServiceImpl implements ChatService {
                             return;
                         }
 
+                        // 将 AI 响应加入 ChatMemory
                         String content = completeResponse.aiMessage().text();
-                        session.addUserMessage(question);
-                        session.addAssistantMessage(content);
+                        chatMemory.add(completeResponse.aiMessage());
 
                         long costTime = System.currentTimeMillis() - startTime;
                         log.debug("流式对话完成 - sessionId: {}, userId: {}, aiType: {}, 耗时: {}ms",
